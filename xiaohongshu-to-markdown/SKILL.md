@@ -1,5 +1,5 @@
 ---
-name: xhs-to-markdown
+name: xiaohongshu-to-markdown
 description: "Xiaohongshu Article to Markdown — Extracts text from Xiaohongshu image-based posts via OCR. Use when the user needs to convert a Xiaohongshu/Little Red Book post into readable Markdown text. The tool downloads all carousel images from a post and uses macOS Vision OCR to extract the text content. Requires a Chromium browser logged into xiaohongshu.com with CDP enabled. macOS only (uses Vision Framework for OCR)."
 ---
 

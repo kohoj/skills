@@ -1,5 +1,5 @@
 ---
-name: x-cdp-scraper
+name: twitter-scraper
 description: "X/Twitter CDP Tweet Scraper — Scrapes a user's complete tweet history via browser CDP protocol. Use when the user needs to fully and accurately collect all tweets from a specific Twitter/X user. Applicable scenarios: collecting all tweets from a user for a given year, exporting a Twitter timeline, bulk-fetching tweet data for analysis. Preferred over x-tweet-fetcher (Nitter-based) when full long-form tweets, precise timestamps, or higher completeness is required. Supports Arc, Chrome, Edge, Brave, and all Chromium-based browsers. Requires the user to be logged into Twitter in the browser."
 ---
 
