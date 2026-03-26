@@ -1,8 +1,28 @@
 # Claude Code Skills
 
-A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills for web scraping, data extraction, and content conversion. Built on a shared CDP (Chrome DevTools Protocol) + httpx architecture for fast, authenticated access.
+A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills for web scraping, data extraction, and financial research. No API keys required.
 
 ## Available Skills
+
+### web-search
+
+Search the web via DuckDuckGo. Returns Markdown-formatted results (title + snippet + URL). Supports text and news search with region filtering.
+
+**Features:** text search, news search, region bias, no API key needed.
+
+```bash
+npx skills add https://github.com/kohoj/skills --skill web-search
+```
+
+### market-data
+
+Query financial market data from Yahoo Finance. 8 subcommands: quote, history, fundamentals, earnings, profile, dividends, options, compare. Works with any ticker — US, HK, A-shares, crypto, forex, ETFs.
+
+**Features:** real-time prices, OHLCV history, valuation metrics, earnings dates, options chains, dividend history, multi-ticker comparison.
+
+```bash
+npx skills add https://github.com/kohoj/skills --skill market-data
+```
 
 ### twitter-scraper
 
@@ -26,10 +46,10 @@ npx skills add https://github.com/kohoj/skills --skill xiaohongshu-to-markdown
 
 ## Prerequisites
 
-- A Chromium-based browser (Chrome, Edge, Brave, Arc) with CDP enabled
-- Python 3.8+
-- `pip install playwright httpx && playwright install chromium`
-- **xiaohongshu-to-markdown** additionally requires macOS (for Vision Framework OCR)
+- **web-search**: Python 3.11+, [uv](https://github.com/astral-sh/uv)
+- **market-data**: Python 3.11+, [uv](https://github.com/astral-sh/uv)
+- **twitter-scraper**: Python 3.8+, a Chromium browser with CDP enabled
+- **xiaohongshu-to-markdown**: macOS, Python 3.8+, a Chromium browser with CDP enabled
 
 ## License
 

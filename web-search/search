@@ -1,0 +1,73 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["ddgs"]
+# ///
+"""Search the web via DuckDuckGo. Returns Markdown-formatted results."""
+
+import argparse
+import sys
+
+from ddgs import DDGS
+
+
+def search(query: str, *, max_results: int = 5, news: bool = False, region: str | None = None) -> list[dict]:
+    ddgs = DDGS()
+    kwargs: dict = {"max_results": max_results}
+    if region:
+        kwargs["region"] = region
+    if news:
+        return list(ddgs.news(query, **kwargs))
+    return list(ddgs.text(query, **kwargs))
+
+
+def format_results(results: list[dict], query: str) -> str:
+    if not results:
+        return f'No results found for "{query}"'
+
+    lines: list[str] = []
+    for r in results:
+        title = r.get("title", "Untitled")
+        body = r.get("body", "")
+        url = r.get("href", r.get("url", ""))
+        date = r.get("date", "")
+        source = r.get("source", "")
+
+        # Title line — append source and date for news
+        meta = ""
+        if source or date:
+            parts = []
+            if source:
+                parts.append(source)
+            if date:
+                parts.append(date[:10])
+            meta = f"  ({', '.join(parts)})"
+        lines.append(f"### {title}{meta}")
+
+        if body:
+            lines.append(body)
+        if url:
+            lines.append(url)
+        lines.append("")
+    return "\n".join(lines).rstrip()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Search the web via DuckDuckGo")
+    parser.add_argument("query", help="Search terms")
+    parser.add_argument("--max", type=int, default=5, dest="max_results", help="Number of results (default: 5)")
+    parser.add_argument("--news", action="store_true", help="Search news instead of web")
+    parser.add_argument("--region", help="Region code (e.g. cn-zh, us-en)")
+    args = parser.parse_args()
+
+    try:
+        results = search(args.query, max_results=args.max_results, news=args.news, region=args.region)
+    except Exception as e:
+        print(f"Search failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    print(format_results(results, args.query))
+
+
+if __name__ == "__main__":
+    main()

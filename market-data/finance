@@ -1,0 +1,408 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["yfinance", "lxml"]
+# ///
+"""Query financial data from Yahoo Finance. Returns Markdown-formatted results."""
+
+import argparse
+import sys
+from datetime import datetime
+
+import yfinance as yf
+
+
+# --- Formatting helpers ---
+
+
+def fmt_num(n) -> str:
+    """Format large numbers: 1.23T, 456B, 12.3M, 4.5K."""
+    if n is None:
+        return "—"
+    if abs(n) >= 1e12:
+        return f"{n / 1e12:.2f}T"
+    if abs(n) >= 1e9:
+        return f"{n / 1e9:.2f}B"
+    if abs(n) >= 1e6:
+        return f"{n / 1e6:.2f}M"
+    if abs(n) >= 1e3:
+        return f"{n / 1e3:.1f}K"
+    return f"{n:.2f}"
+
+
+def fmt_pct(n) -> str:
+    """Format fraction as percentage with sign. Expects 0.27 for 27%."""
+    if n is None:
+        return "—"
+    return f"{n:+.2%}"
+
+
+def fmt_price(n, currency: str = "") -> str:
+    """Format price with optional currency."""
+    if n is None:
+        return "—"
+    prefix = {"USD": "$", "HKD": "HK$", "CNY": "CN¥", "JPY": "¥", "EUR": "€", "GBP": "£"}.get(currency, "")
+    return f"{prefix}{n:,.2f}"
+
+
+def g(info: dict, key: str, default=None):
+    """Get from info dict, treating None and NaN as missing."""
+    v = info.get(key, default)
+    if v is None:
+        return default
+    try:
+        if v != v:  # NaN check
+            return default
+    except (TypeError, ValueError):
+        pass
+    return v
+
+
+def ticker_or_die(symbol: str) -> tuple[yf.Ticker, dict]:
+    """Get ticker info or exit with error."""
+    t = yf.Ticker(symbol)
+    info = t.info
+    if not info or not g(info, "regularMarketPrice"):
+        print(f"Unknown ticker: {symbol}", file=sys.stderr)
+        sys.exit(1)
+    return t, info
+
+
+# --- Subcommands ---
+
+
+def cmd_quote(symbols: list[str]) -> None:
+    for symbol in symbols:
+        t, info = ticker_or_die(symbol)
+        cur = g(info, "currency", "")
+        name = g(info, "longName") or g(info, "shortName") or symbol
+        price = g(info, "regularMarketPrice")
+        change = g(info, "regularMarketChange")
+        change_pct = g(info, "regularMarketChangePercent")
+        mcap = g(info, "marketCap")
+        pe = g(info, "trailingPE")
+        hi52 = g(info, "fiftyTwoWeekHigh")
+        lo52 = g(info, "fiftyTwoWeekLow")
+        vol = g(info, "regularMarketVolume")
+        sector = g(info, "sector")
+        industry = g(info, "industry")
+
+        print(f"## {symbol} — {name}")
+        print(f"- Price: {fmt_price(price, cur)}", end="")
+        if change is not None and change_pct is not None:
+            sign = "+" if change >= 0 else ""
+            print(f"  ({sign}{change:.2f}, {fmt_pct(change_pct / 100)})")
+        else:
+            print()
+        if mcap:
+            print(f"- Market Cap: {fmt_num(mcap)}")
+        if pe:
+            print(f"- P/E: {pe:.1f}")
+        if hi52 and lo52:
+            print(f"- 52W Range: {fmt_price(lo52, cur)} – {fmt_price(hi52, cur)}")
+        if vol:
+            print(f"- Volume: {fmt_num(vol)}")
+        if sector:
+            print(f"- Sector: {sector}")
+        if industry:
+            print(f"- Industry: {industry}")
+        print()
+
+
+def cmd_history(symbol: str, period: str) -> None:
+    t, _ = ticker_or_die(symbol)
+    hist = t.history(period=period)
+    if hist.empty:
+        print(f"No history data for {symbol}")
+        return
+
+    total = len(hist)
+    if total > 20:
+        hist = hist.tail(20)
+        print(f"## {symbol} — Last 20 of {total} rows ({period})\n")
+    else:
+        print(f"## {symbol} — Price History ({period})\n")
+
+    print("| Date | Open | High | Low | Close | Volume |")
+    print("|------|------|------|-----|-------|--------|")
+    for date, row in hist.iterrows():
+        d = date.strftime("%Y-%m-%d")
+        print(f"| {d} | {row['Open']:.2f} | {row['High']:.2f} | {row['Low']:.2f} | {row['Close']:.2f} | {fmt_num(row['Volume'])} |")
+    print()
+
+
+def cmd_fundamentals(symbols: list[str]) -> None:
+    for symbol in symbols:
+        t, info = ticker_or_die(symbol)
+        cur = g(info, "currency", "")
+
+        print(f"## {symbol} — Fundamentals\n")
+
+        rows = [
+            ("P/E (trailing)", f"{v:.1f}" if (v := g(info, "trailingPE")) else None),
+            ("P/E (forward)", f"{v:.1f}" if (v := g(info, "forwardPE")) else None),
+            ("EPS (trailing)", f"{v:.2f}" if (v := g(info, "trailingEps")) else None),
+            ("EPS (forward)", f"{v:.2f}" if (v := g(info, "forwardEps")) else None),
+            ("Revenue", fmt_num(v) if (v := g(info, "totalRevenue")) else None),
+            ("Revenue Growth", fmt_pct(v) if (v := g(info, "revenueGrowth")) else None),
+            ("Profit Margin", fmt_pct(v) if (v := g(info, "profitMargins")) else None),
+            ("Operating Margin", fmt_pct(v) if (v := g(info, "operatingMargins")) else None),
+            ("Debt/Equity", f"{v:.1f}" if (v := g(info, "debtToEquity")) else None),
+            ("ROE", fmt_pct(v) if (v := g(info, "returnOnEquity")) else None),
+            ("ROA", fmt_pct(v) if (v := g(info, "returnOnAssets")) else None),
+            ("Free Cash Flow", fmt_num(v) if (v := g(info, "freeCashflow")) else None),
+            ("Short % of Float", fmt_pct(v) if (v := g(info, "shortPercentOfFloat")) else None),
+        ]
+        for label, val in rows:
+            if val:
+                print(f"- {label}: {val}")
+
+        # Analyst targets
+        try:
+            targets = t.analyst_price_targets
+            if targets and targets.get("mean"):
+                print(f"- Analyst Target: {fmt_price(targets['low'], cur)} / {fmt_price(targets['mean'], cur)} / {fmt_price(targets['high'], cur)} (low/mean/high)")
+        except Exception:
+            pass
+
+        print()
+
+
+def cmd_earnings(symbols: list[str]) -> None:
+    for symbol in symbols:
+        t, info = ticker_or_die(symbol)
+
+        print(f"## {symbol} — Earnings\n")
+
+        # Next earnings from calendar
+        try:
+            cal = t.calendar
+            if cal:
+                dates = cal.get("Earnings Date", [])
+                if dates:
+                    print(f"- Next Earnings: {dates[0]}")
+                eps_avg = cal.get("Earnings Average")
+                eps_lo = cal.get("Earnings Low")
+                eps_hi = cal.get("Earnings High")
+                if eps_avg is not None:
+                    print(f"- EPS Estimate: {eps_avg:.2f} (range: {eps_lo:.2f} – {eps_hi:.2f})")
+                rev_avg = cal.get("Revenue Average")
+                if rev_avg:
+                    print(f"- Revenue Estimate: {fmt_num(rev_avg)}")
+                print()
+        except Exception:
+            pass
+
+        # Historical earnings
+        try:
+            ed = t.earnings_dates
+            if ed is not None and not ed.empty:
+                # Only show past earnings (with actual EPS)
+                past = ed[ed["Reported EPS"].notna()].head(8)
+                if not past.empty:
+                    print("| Date | EPS Est. | EPS Actual | Surprise % |")
+                    print("|------|----------|------------|------------|")
+                    for date, row in past.iterrows():
+                        d = date.strftime("%Y-%m-%d")
+                        est = f"{row['EPS Estimate']:.2f}" if row["EPS Estimate"] == row["EPS Estimate"] else "—"
+                        act = f"{row['Reported EPS']:.2f}"
+                        surp = f"{row['Surprise(%)']:.1f}%" if row["Surprise(%)"] == row["Surprise(%)"] else "—"
+                        print(f"| {d} | {est} | {act} | {surp} |")
+                    print()
+        except Exception:
+            pass
+
+
+def cmd_profile(symbols: list[str]) -> None:
+    for symbol in symbols:
+        _, info = ticker_or_die(symbol)
+
+        name = g(info, "longName") or g(info, "shortName") or symbol
+        print(f"## {symbol} — {name}\n")
+
+        rows = [
+            ("Sector", g(info, "sector")),
+            ("Industry", g(info, "industry")),
+            ("Employees", fmt_num(v) if (v := g(info, "fullTimeEmployees")) else None),
+            ("HQ", ", ".join(filter(None, [g(info, "city"), g(info, "state"), g(info, "country")]))),
+            ("Website", g(info, "website")),
+        ]
+        for label, val in rows:
+            if val:
+                print(f"- {label}: {val}")
+
+        summary = g(info, "longBusinessSummary")
+        if summary:
+            # Truncate to ~200 words
+            words = summary.split()
+            if len(words) > 200:
+                summary = " ".join(words[:200]) + "..."
+            print(f"\n{summary}")
+        print()
+
+
+def cmd_dividends(symbols: list[str]) -> None:
+    for symbol in symbols:
+        t, info = ticker_or_die(symbol)
+
+        div_rate = g(info, "dividendRate")
+        div_yield = g(info, "dividendYield")
+        if not div_rate and not div_yield:
+            print(f"No dividend data for {symbol}")
+            print()
+            continue
+
+        print(f"## {symbol} — Dividends\n")
+
+        if div_rate:
+            print(f"- Annual Rate: {div_rate:.2f}")
+        if div_yield:
+            print(f"- Yield: {div_yield:.2f}%")
+        ex_date = g(info, "exDividendDate")
+        if ex_date:
+            print(f"- Ex-Dividend Date: {datetime.fromtimestamp(ex_date).strftime('%Y-%m-%d')}")
+        payout = g(info, "payoutRatio")
+        if payout:
+            print(f"- Payout Ratio: {fmt_pct(payout)}")
+        print()
+
+        # Recent dividend history
+        try:
+            divs = t.dividends
+            if divs is not None and not divs.empty:
+                recent = divs.tail(8)
+                print("| Date | Amount |")
+                print("|------|--------|")
+                for date, amount in recent.items():
+                    d = date.strftime("%Y-%m-%d")
+                    print(f"| {d} | {amount:.4f} |")
+                print()
+        except Exception:
+            pass
+
+
+def cmd_options(symbol: str) -> None:
+    t, info = ticker_or_die(symbol)
+
+    try:
+        expiries = t.options
+    except Exception:
+        print(f"No options data for {symbol}")
+        return
+
+    if not expiries:
+        print(f"No options data for {symbol}")
+        return
+
+    expiry = expiries[0]
+    chain = t.option_chain(expiry)
+    price = g(info, "regularMarketPrice", 0)
+
+    print(f"## {symbol} — Options (expiry: {expiry})\n")
+
+    for label, df in [("Calls", chain.calls), ("Puts", chain.puts)]:
+        # Filter to near-the-money: 5 strikes above and below
+        atm = df.iloc[(df["strike"] - price).abs().argsort()[:1]].index[0]
+        pos = df.index.get_loc(atm)
+        start = max(0, pos - 5)
+        end = min(len(df), pos + 6)
+        near = df.iloc[start:end]
+
+        print(f"### {label}\n")
+        print("| Strike | Bid | Ask | Volume | OI | IV |")
+        print("|--------|-----|-----|--------|----|----|")
+        for _, row in near.iterrows():
+            strike = f"{row['strike']:.2f}"
+            bid = f"{row['bid']:.2f}" if row["bid"] == row["bid"] else "—"
+            ask = f"{row['ask']:.2f}" if row["ask"] == row["ask"] else "—"
+            vol = f"{int(row['volume'])}" if row["volume"] == row["volume"] else "—"
+            oi = f"{int(row['openInterest'])}" if row["openInterest"] == row["openInterest"] else "—"
+            iv = f"{row['impliedVolatility']:.1%}" if row["impliedVolatility"] == row["impliedVolatility"] else "—"
+            print(f"| {strike} | {bid} | {ask} | {vol} | {oi} | {iv} |")
+        print()
+
+
+def cmd_compare(symbols: list[str]) -> None:
+    data = []
+    for symbol in symbols:
+        t, info = ticker_or_die(symbol)
+        cur = g(info, "currency", "")
+        data.append({
+            "symbol": symbol,
+            "price": fmt_price(g(info, "regularMarketPrice"), cur),
+            "change": fmt_pct(v / 100) if (v := g(info, "regularMarketChangePercent")) else "—",
+            "mcap": fmt_num(g(info, "marketCap")),
+            "pe": f"{v:.1f}" if (v := g(info, "trailingPE")) else "—",
+            "52w_range": f"{fmt_price(lo, cur)} – {fmt_price(hi, cur)}" if (lo := g(info, "fiftyTwoWeekLow")) and (hi := g(info, "fiftyTwoWeekHigh")) else "—",
+            "volume": fmt_num(g(info, "regularMarketVolume")),
+        })
+
+    print("## Comparison\n")
+    print("| | " + " | ".join(d["symbol"] for d in data) + " |")
+    print("|---|" + "|".join("---" for _ in data) + "|")
+    for label, key in [("Price", "price"), ("Change", "change"), ("Market Cap", "mcap"), ("P/E", "pe"), ("52W Range", "52w_range"), ("Volume", "volume")]:
+        print(f"| {label} | " + " | ".join(d[key] for d in data) + " |")
+    print()
+
+
+# --- Main ---
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Query financial data from Yahoo Finance")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    p_quote = sub.add_parser("quote", help="Price snapshot")
+    p_quote.add_argument("symbols", nargs="+")
+
+    p_hist = sub.add_parser("history", help="OHLCV price history")
+    p_hist.add_argument("symbol")
+    p_hist.add_argument("period", nargs="?", default="1mo")
+
+    p_fund = sub.add_parser("fundamentals", help="Valuation and financial metrics")
+    p_fund.add_argument("symbols", nargs="+")
+
+    p_earn = sub.add_parser("earnings", help="Earnings dates and EPS history")
+    p_earn.add_argument("symbols", nargs="+")
+
+    p_prof = sub.add_parser("profile", help="Company overview")
+    p_prof.add_argument("symbols", nargs="+")
+
+    p_div = sub.add_parser("dividends", help="Dividend info and history")
+    p_div.add_argument("symbols", nargs="+")
+
+    p_opt = sub.add_parser("options", help="Near-the-money options chain")
+    p_opt.add_argument("symbol")
+
+    p_cmp = sub.add_parser("compare", help="Side-by-side comparison")
+    p_cmp.add_argument("symbols", help="Comma-separated tickers")
+
+    args = parser.parse_args()
+
+    try:
+        match args.command:
+            case "quote":
+                cmd_quote(args.symbols)
+            case "history":
+                cmd_history(args.symbol, args.period)
+            case "fundamentals":
+                cmd_fundamentals(args.symbols)
+            case "earnings":
+                cmd_earnings(args.symbols)
+            case "profile":
+                cmd_profile(args.symbols)
+            case "dividends":
+                cmd_dividends(args.symbols)
+            case "options":
+                cmd_options(args.symbol)
+            case "compare":
+                cmd_compare(args.symbols.split(","))
+    except KeyboardInterrupt:
+        sys.exit(130)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
