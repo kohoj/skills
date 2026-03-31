@@ -1,6 +1,6 @@
 # Claude Code Skills
 
-A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills for web scraping, data extraction, and financial research. No API keys required.
+A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills for web scraping, data extraction, financial research, and source code analysis.
 
 ## Available Skills
 
@@ -44,12 +44,25 @@ Convert Xiaohongshu (Little Red Book) image-based posts into readable Markdown. 
 npx skills add https://github.com/kohoj/skills --skill xiaohongshu-to-markdown
 ```
 
+### claude-code-dissect
+
+Navigate and extract reusable design patterns from the Claude Code source code. Covers 9 subsystems: bootstrap, conversation engine, context compaction, tool system, permissions, hooks, multi-agent/swarm, memory, and extensions (MCP/plugins/skills/UI). Routes to the right reference file by topic, reads actual source, and returns extractable patterns with architecture diagrams.
+
+**Features:** 9 reference files covering every major subsystem, auto-discovery of source root, precise reading orders with line numbers, cross-referenced neighbor links, structured output format.
+
+**Requires:** Claude Code source extracted from sourcemap (see skill setup instructions).
+
+```bash
+npx skills add https://github.com/kohoj/skills --skill claude-code-dissect
+```
+
 ## Prerequisites
 
 - **web-search**: Python 3.11+, [uv](https://github.com/astral-sh/uv)
 - **market-data**: Python 3.11+, [uv](https://github.com/astral-sh/uv)
 - **twitter-scraper**: Python 3.8+, a Chromium browser with CDP enabled
 - **xiaohongshu-to-markdown**: macOS, Python 3.8+, a Chromium browser with CDP enabled
+- **claude-code-dissect**: Claude Code source extracted from sourcemap (no external dependencies)
 
 ## License
 
