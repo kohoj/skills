@@ -1,6 +1,6 @@
-# Claude Code Skills
+# Agent Skills
 
-A collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skills for web scraping, data extraction, financial research, and source code analysis.
+A collection of skills for web scraping, data extraction, financial research, and source code analysis.
 
 ## Available Skills
 
@@ -56,6 +56,18 @@ Navigate and extract reusable design patterns from the Claude Code source code. 
 npx skills add https://github.com/kohoj/skills --skill claude-code-dissect
 ```
 
+### hermes-agent-dissect
+
+Navigate and extract reusable design patterns from the Hermes Agent source code. Covers 10 subsystems: bootstrap/CLI, conversation engine, prompt/context, tool system, gateway (14 platform adapters), skills, terminal backends, memory/persistence, RL training environments, and integrations (ACP/MCP/plugins/delegation). Routes to the right reference file by topic, reads actual source, and returns extractable patterns with architecture diagrams.
+
+**Features:** 10 reference files covering every major subsystem, auto-discovery of source root, precise reading orders with line numbers, cross-referenced neighbor links, structured output with design tradeoffs.
+
+**Requires:** Hermes Agent source tree in your project.
+
+```bash
+npx skills add https://github.com/kohoj/skills --skill hermes-agent-dissect
+```
+
 ## Prerequisites
 
 - **web-search**: Python 3.11+, [uv](https://github.com/astral-sh/uv)
@@ -63,6 +75,7 @@ npx skills add https://github.com/kohoj/skills --skill claude-code-dissect
 - **twitter-scraper**: Python 3.8+, a Chromium browser with CDP enabled
 - **xiaohongshu-to-markdown**: macOS, Python 3.8+, a Chromium browser with CDP enabled
 - **claude-code-dissect**: Claude Code source extracted from sourcemap (no external dependencies)
+- **hermes-agent-dissect**: Hermes Agent source tree in your project (no external dependencies)
 
 ## License
 
