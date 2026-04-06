@@ -1,0 +1,105 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["faster-whisper", "requests"]
+# ///
+"""Transcribe podcast audio using local faster-whisper model. Outputs timestamped text."""
+
+import argparse
+import os
+import sys
+import tempfile
+
+import requests
+
+
+def download_audio(url: str) -> str:
+    print(f"Downloading audio...", file=sys.stderr, flush=True)
+    resp = requests.get(url, stream=True, timeout=30, headers={"User-Agent": "podcast-to-md/1.0"})
+    resp.raise_for_status()
+
+    content_type = resp.headers.get("content-type", "")
+    ext = ".mp3"
+    for ct, e in [("mp4", ".m4a"), ("m4a", ".m4a"), ("ogg", ".ogg"), ("wav", ".wav")]:
+        if ct in content_type or url.split("?")[0].endswith(e):
+            ext = e
+            break
+
+    tmp = tempfile.NamedTemporaryFile(suffix=ext, delete=False)
+    total = int(resp.headers.get("content-length", 0))
+    downloaded = 0
+    for chunk in resp.iter_content(chunk_size=1024 * 1024):
+        tmp.write(chunk)
+        downloaded += len(chunk)
+        if total:
+            pct = downloaded / total * 100
+            print(f"\r  {pct:.0f}% ({downloaded // (1024*1024)}MB / {total // (1024*1024)}MB)",
+                  end="", file=sys.stderr, flush=True)
+    tmp.close()
+    if total:
+        print(file=sys.stderr, flush=True)
+    print(f"  Saved: {tmp.name} ({downloaded // (1024*1024)}MB)", file=sys.stderr, flush=True)
+    return tmp.name
+
+
+def format_ts(seconds: float) -> str:
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Transcribe podcast audio with faster-whisper")
+    parser.add_argument("audio", help="Audio URL or local file path")
+    parser.add_argument("--model", default="medium", help="Whisper model size (default: medium)")
+    parser.add_argument("--language", default=None, help="Language hint (auto-detect if omitted)")
+    args = parser.parse_args()
+
+    audio_path = args.audio
+    tmp_path = None
+    if audio_path.startswith(("http://", "https://")):
+        try:
+            audio_path = download_audio(audio_path)
+            tmp_path = audio_path
+        except requests.RequestException as e:
+            print(f"Download failed: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    if not os.path.isfile(audio_path):
+        print(f"File not found: {audio_path}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        from faster_whisper import WhisperModel
+
+        print(f"Loading model '{args.model}' (first run downloads ~1-3GB)...", file=sys.stderr, flush=True)
+        model = WhisperModel(args.model, device="auto", compute_type="auto")
+
+        print("Transcribing...", file=sys.stderr, flush=True)
+        kwargs = {}
+        if args.language:
+            kwargs["language"] = args.language
+
+        segments, info = model.transcribe(audio_path, **kwargs)
+        print(f"  Language: {info.language} (p={info.language_probability:.2f})", file=sys.stderr, flush=True)
+
+        seg_count = 0
+        for segment in segments:
+            text = segment.text.strip()
+            if text:
+                print(f"[{format_ts(segment.start)}] {text}")
+                seg_count += 1
+
+        print(f"  Done: {seg_count} segments", file=sys.stderr, flush=True)
+
+    except Exception as e:
+        print(f"Transcription failed: {e}", file=sys.stderr)
+        sys.exit(1)
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+if __name__ == "__main__":
+    main()
