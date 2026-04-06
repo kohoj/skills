@@ -69,9 +69,35 @@ Follow these steps in order. Each step requires the previous step's output.
   - Episodes with existing transcript URLs vs. those needing Whisper
 - Ask the user to confirm before processing
 
+### Step 2.5: Dedup — diff against existing files
+
+Before processing, check what's already been transcribed:
+
+1. Determine the output directory: `./podcast-transcripts/<podcast-slug>/`
+2. Use Glob to list all existing `.md` files in that directory (excluding `index.md`)
+3. For each episode from Step 2, generate its expected filename (`YYYY-MM-DD-slug.md`)
+4. Categorize:
+   - **New:** no matching file exists → will process
+   - **Exists:** file already present → skip
+   - **Upgradeable:** file exists with `source: whisper` but `transcript_url` is now available → offer to re-process with better source
+
+Show the user a diff summary:
+```
+Episode diff:
+  New (will process):     3 episodes
+  Already transcribed:    2 episodes (skipped)
+  Upgradeable (whisper → RSS transcript): 0 episodes
+
+Proceed with 3 new episodes?
+```
+
+If all episodes already exist, report "No new episodes to process" and stop.
+
+To check if a file is upgradeable, read the first 5 lines and look for `source: whisper` in the frontmatter.
+
 ### Step 3: Process each episode
 
-For each episode, in **chronological order** (oldest first):
+Process only **new** and **user-confirmed upgradeable** episodes, in **chronological order** (oldest first):
 
 **3a. Obtain transcript:**
 
@@ -130,7 +156,9 @@ guests: []
 
 ### Step 4: Generate index.md
 
-After all episodes are processed, create `index.md` in the output directory:
+After processing, regenerate `index.md` from **all** `.md` files in the output directory (both newly created and previously existing). Read each file's frontmatter to build the table. This ensures the index is always complete and up-to-date.
+
+Create `index.md` in the output directory:
 
 ```
 ---
@@ -173,10 +201,12 @@ sources:
 ### Step 5: Report completion
 
 Summarize:
-- Episodes processed: N
+- New episodes processed: N
+- Skipped (already existed): N
+- Upgraded (whisper → RSS): N
 - Transcript sources breakdown: N RSS, N Whisper
 - Output directory path
-- Any failures or skipped episodes
+- Any failures
 
 ## SRT/VTT Parsing Instructions
 
