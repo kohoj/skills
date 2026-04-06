@@ -1,0 +1,234 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["feedparser", "requests"]
+# ///
+"""Parse podcast RSS feed, filter episodes by date, extract metadata. Returns JSON."""
+
+import argparse
+import calendar
+import json
+import sys
+from datetime import datetime, timezone
+from time import mktime
+
+import feedparser
+import requests
+
+
+def fetch_feed(url: str) -> feedparser.FeedParserDict:
+    resp = requests.get(url, timeout=30, headers={"User-Agent": "podcast-to-md/1.0"})
+    resp.raise_for_status()
+    return feedparser.parse(resp.content)
+
+
+def normalize_duration(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    raw = raw.strip()
+    if ":" in raw:
+        parts = raw.split(":")
+        if len(parts) == 3:
+            return raw
+        if len(parts) == 2:
+            return f"00:{parts[0].zfill(2)}:{parts[1].zfill(2)}"
+        return raw
+    try:
+        total = int(float(raw))
+        h, remainder = divmod(total, 3600)
+        m, s = divmod(remainder, 60)
+        return f"{h:02d}:{m:02d}:{s:02d}"
+    except (ValueError, TypeError):
+        return raw
+
+
+def parse_date_arg(date_str: str) -> datetime:
+    parts = date_str.split("-")
+    if len(parts) == 2:
+        return datetime(int(parts[0]), int(parts[1]), 1, tzinfo=timezone.utc)
+    if len(parts) == 3:
+        return datetime(int(parts[0]), int(parts[1]), int(parts[2]), tzinfo=timezone.utc)
+    raise ValueError(f"Invalid date format: {date_str}")
+
+
+def end_of_month(date_str: str) -> datetime:
+    parts = date_str.split("-")
+    if len(parts) == 2:
+        y, m = int(parts[0]), int(parts[1])
+        last_day = calendar.monthrange(y, m)[1]
+        return datetime(y, m, last_day, 23, 59, 59, tzinfo=timezone.utc)
+    if len(parts) == 3:
+        return datetime(int(parts[0]), int(parts[1]), int(parts[2]), 23, 59, 59, tzinfo=timezone.utc)
+    raise ValueError(f"Invalid date format: {date_str}")
+
+
+def entry_date(entry) -> datetime | None:
+    if hasattr(entry, "published_parsed") and entry.published_parsed:
+        return datetime.fromtimestamp(mktime(entry.published_parsed), tz=timezone.utc)
+    if hasattr(entry, "updated_parsed") and entry.updated_parsed:
+        return datetime.fromtimestamp(mktime(entry.updated_parsed), tz=timezone.utc)
+    return None
+
+
+def extract_transcript_info(entry) -> tuple[str | None, str | None]:
+    for key in entry.keys():
+        if "transcript" in key.lower() and key != "itunes_summary":
+            val = entry[key]
+            if isinstance(val, str):
+                ext_map = {".srt": "srt", ".vtt": "vtt", ".json": "json"}
+                t_type = next((t for ext, t in ext_map.items() if val.endswith(ext)), "text")
+                return val, t_type
+            if isinstance(val, dict):
+                return val.get("url") or val.get("href"), val.get("type")
+            if isinstance(val, list):
+                for item in val:
+                    if isinstance(item, dict):
+                        return item.get("url") or item.get("href"), item.get("type")
+
+    for link in entry.get("links", []):
+        rel = link.get("rel", "")
+        href = link.get("href", "")
+        link_type = link.get("type", "")
+        if "transcript" in rel or "transcript" in link_type:
+            ext_map = {"srt": "srt", "vtt": "vtt", "json": "json"}
+            t_type = next((t for k, t in ext_map.items() if k in link_type or href.endswith(f".{k}")), "text")
+            return href, t_type
+
+    return None, None
+
+
+def extract_audio_url(entry) -> str | None:
+    for enc in entry.get("enclosures", []):
+        if enc.get("type", "").startswith("audio/"):
+            return enc.get("href") or enc.get("url")
+    for link in entry.get("links", []):
+        if link.get("type", "").startswith("audio/"):
+            return link.get("href")
+    return None
+
+
+def extract_chapters_url(entry) -> str | None:
+    for key in entry.keys():
+        if "chapters" in key.lower():
+            val = entry[key]
+            if isinstance(val, str):
+                return val
+            if isinstance(val, dict):
+                return val.get("url") or val.get("href")
+    return None
+
+
+def build_episode(entry) -> dict:
+    pub_date = entry_date(entry)
+    transcript_url, transcript_type = extract_transcript_info(entry)
+    duration_raw = entry.get("itunes_duration")
+    season = entry.get("itunes_season")
+    episode_num = entry.get("itunes_episode")
+    explicit_raw = entry.get("itunes_explicit", "")
+    keywords_raw = entry.get("itunes_keywords", "")
+    summary = entry.get("itunes_summary", "")
+
+    ep_artwork = None
+    image = entry.get("image", {})
+    if isinstance(image, dict):
+        ep_artwork = image.get("href")
+    if not ep_artwork:
+        itunes_image = entry.get("itunes_image", {})
+        if isinstance(itunes_image, dict):
+            ep_artwork = itunes_image.get("href")
+
+    keywords = [k.strip() for k in keywords_raw.split(",") if k.strip()] if keywords_raw else []
+
+    return {
+        "title": entry.get("title", ""),
+        "description": entry.get("summary", entry.get("description", "")),
+        "date": pub_date.strftime("%Y-%m-%d") if pub_date else None,
+        "duration": normalize_duration(duration_raw),
+        "season": int(season) if season else None,
+        "episode": int(episode_num) if episode_num else None,
+        "explicit": explicit_raw.lower() in ("yes", "true", "1") if explicit_raw else False,
+        "audio_url": extract_audio_url(entry),
+        "episode_url": entry.get("link"),
+        "artwork_url": ep_artwork,
+        "transcript_url": transcript_url,
+        "transcript_type": transcript_type,
+        "chapters_url": extract_chapters_url(entry),
+        "keywords": keywords,
+        "summary": summary or None,
+    }
+
+
+def build_podcast_meta(feed) -> dict:
+    f = feed.feed
+    cats = []
+    for tag in getattr(f, "tags", []) or []:
+        term = tag.get("term", "")
+        if term and term not in cats:
+            cats.append(term)
+
+    artwork = None
+    image = getattr(f, "image", None)
+    if image and hasattr(image, "href"):
+        artwork = image.href
+    if not artwork:
+        itunes_image = getattr(f, "itunes_image", None) or getattr(f, "get", lambda k, d=None: d)("itunes_image", {})
+        if isinstance(itunes_image, dict):
+            artwork = itunes_image.get("href")
+
+    return {
+        "title": getattr(f, "title", ""),
+        "description": getattr(f, "subtitle", "") or getattr(f, "summary", ""),
+        "language": getattr(f, "language", None),
+        "author": getattr(f, "author", None) or getattr(f, "itunes_author", None),
+        "link": getattr(f, "link", None),
+        "artwork_url": artwork,
+        "categories": cats,
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Parse podcast RSS feed and extract episode metadata")
+    parser.add_argument("rss_url", help="RSS feed URL")
+    parser.add_argument("--from", dest="date_from", help="Start date YYYY-MM or YYYY-MM-DD (inclusive)")
+    parser.add_argument("--to", dest="date_to", help="End date YYYY-MM or YYYY-MM-DD (inclusive)")
+    parser.add_argument("--recent", type=int, help="Last N episodes")
+    parser.add_argument("--all", action="store_true", help="All episodes")
+    args = parser.parse_args()
+
+    has_date_filter = args.date_from or args.date_to
+    if not has_date_filter and not args.all and args.recent is None:
+        args.recent = 10
+
+    try:
+        feed = fetch_feed(args.rss_url)
+    except Exception as e:
+        print(f"Failed to fetch feed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    total_count = len(feed.entries)
+    episodes = [build_episode(e) for e in feed.entries]
+    episodes.sort(key=lambda ep: ep["date"] or "0000-00-00", reverse=True)
+
+    if has_date_filter:
+        if args.date_from:
+            dt_from = parse_date_arg(args.date_from)
+            episodes = [ep for ep in episodes if ep["date"] and
+                        datetime.strptime(ep["date"], "%Y-%m-%d").replace(tzinfo=timezone.utc) >= dt_from]
+        if args.date_to:
+            dt_to = end_of_month(args.date_to)
+            episodes = [ep for ep in episodes if ep["date"] and
+                        datetime.strptime(ep["date"], "%Y-%m-%d").replace(tzinfo=timezone.utc) <= dt_to]
+    elif args.recent:
+        episodes = episodes[:args.recent]
+
+    result = {
+        "podcast": build_podcast_meta(feed),
+        "episodes": episodes,
+        "total_count": total_count,
+        "filtered_count": len(episodes),
+    }
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
