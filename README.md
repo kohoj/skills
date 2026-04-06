@@ -68,6 +68,16 @@ Navigate and extract reusable design patterns from the Hermes Agent source code.
 npx skills add https://github.com/kohoj/skills --skill hermes-agent-dissect
 ```
 
+### podcast-to-md
+
+Turn any Apple Podcast into structured Markdown files with rich frontmatter, show notes, and timestamped transcripts. Supports search by name or URL, date-range filtering, automatic transcript detection from RSS feeds, and local Whisper transcription as fallback.
+
+**Features:** iTunes search/lookup, RSS metadata extraction (iTunes + Podcasting 2.0 namespaces), time filtering, transcript URL detection, local faster-whisper transcription, structured frontmatter, index generation.
+
+```bash
+npx skills add https://github.com/kohoj/skills --skill podcast-to-md
+```
+
 ## Prerequisites
 
 - **web-search**: Python 3.11+, [uv](https://github.com/astral-sh/uv)
@@ -76,6 +86,7 @@ npx skills add https://github.com/kohoj/skills --skill hermes-agent-dissect
 - **xiaohongshu-to-markdown**: macOS, Python 3.8+, a Chromium browser with CDP enabled
 - **claude-code-dissect**: Claude Code source extracted from sourcemap (no external dependencies)
 - **hermes-agent-dissect**: Hermes Agent source tree in your project (no external dependencies)
+- **podcast-to-md**: Python 3.11+, [uv](https://github.com/astral-sh/uv). Local transcription requires faster-whisper (auto-installed on first use).
 
 ## License
 
