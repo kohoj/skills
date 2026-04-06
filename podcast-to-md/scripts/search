@@ -1,0 +1,88 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["requests"]
+# ///
+"""Search Apple Podcasts via iTunes Search/Lookup API. Returns JSON."""
+
+import argparse
+import json
+import re
+import sys
+
+import requests
+
+
+def extract_apple_id(value: str) -> int | None:
+    """Extract Apple Podcasts ID from a URL or numeric string."""
+    if value.isdigit():
+        return int(value)
+    m = re.search(r'podcasts\.apple\.com/.+?/id(\d+)', value)
+    if m:
+        return int(m.group(1))
+    return None
+
+
+def lookup(apple_id: int) -> list[dict]:
+    resp = requests.get(
+        "https://itunes.apple.com/lookup",
+        params={"id": apple_id, "entity": "podcast"},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return [r for r in data.get("results", []) if r.get("wrapperType") == "collection"]
+
+
+def search(term: str, limit: int = 5) -> list[dict]:
+    resp = requests.get(
+        "https://itunes.apple.com/search",
+        params={"term": term, "media": "podcast", "limit": limit},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    return resp.json().get("results", [])
+
+
+def normalize(results: list[dict]) -> list[dict]:
+    out = []
+    for r in results:
+        out.append({
+            "id": r.get("collectionId"),
+            "name": r.get("collectionName"),
+            "artist": r.get("artistName"),
+            "rss_url": r.get("feedUrl"),
+            "artwork_url": r.get("artworkUrl600"),
+            "genre": r.get("primaryGenreName"),
+            "episode_count": r.get("trackCount"),
+            "language": r.get("languageCodesISO2A"),
+            "last_updated": (r.get("releaseDate", "") or "")[:10],
+        })
+    return out
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Search Apple Podcasts via iTunes API")
+    parser.add_argument("query", help="Podcast name, Apple Podcasts URL, or numeric Apple ID")
+    parser.add_argument("--limit", type=int, default=5, help="Max results (default: 5)")
+    args = parser.parse_args()
+
+    try:
+        apple_id = extract_apple_id(args.query)
+        if apple_id:
+            raw = lookup(apple_id)
+        else:
+            raw = search(args.query, limit=args.limit)
+    except requests.RequestException as e:
+        print(f"Request failed: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if not raw:
+        print("[]")
+        return
+
+    print(json.dumps(normalize(raw), ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
