@@ -78,6 +78,16 @@ Turn any Apple Podcast into structured Markdown files with rich frontmatter, sho
 npx skills add https://github.com/kohoj/skills --skill podcast-to-md
 ```
 
+### ascii-rendering
+
+High-quality image-to-ASCII conversion using shape-vector matching. Instead of treating characters as pixels, this renderer quantifies the geometric shape of each ASCII character via 6D shape vectors and picks the best match per cell. Produces sharp edges and crisp contours.
+
+**Features:** 6D shape-vector matching, contrast enhancement for edge sharpness, image/video/webcam input, ANSI true-color output, multiple charsets, adjustable font aspect ratio.
+
+```bash
+npx skills add https://github.com/kohoj/skills --skill ascii-rendering
+```
+
 ## Prerequisites
 
 - **web-search**: Python 3.11+, [uv](https://github.com/astral-sh/uv)
@@ -87,6 +97,7 @@ npx skills add https://github.com/kohoj/skills --skill podcast-to-md
 - **claude-code-dissect**: Claude Code source extracted from sourcemap (no external dependencies)
 - **hermes-agent-dissect**: Hermes Agent source tree in your project (no external dependencies)
 - **podcast-to-md**: Python 3.11+, [uv](https://github.com/astral-sh/uv). Local transcription requires faster-whisper (auto-installed on first use).
+- **ascii-rendering**: Python 3.9+, Pillow, NumPy. Optional: OpenCV (video/camera), SciPy (KD-tree acceleration).
 
 ## License
 
