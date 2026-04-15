@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Department-Agent Company Architecture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0a; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  .control-panel {
+    position: fixed; top: 20px; right: 20px; width: 260px; max-height: 80vh;
+    overflow-y: auto; background: rgba(10,10,10,0.88); border-radius: 8px;
+    padding: 14px; backdrop-filter: blur(8px); box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    z-index: 10;
+  }
+  .control-panel::-webkit-scrollbar { width: 6px; }
+  .control-panel::-webkit-scrollbar-thumb { background: rgba(255,77,77,0.4); border-radius: 3px; }
+  .panel-header {
+    font-size: 13px; font-weight: 600; color: #eee; margin-bottom: 10px;
+    padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .mogu-control { display:flex; align-items:center; gap:6px; margin:5px 0; font-size:12px; color:#aaa; }
+  .mogu-control label { min-width:64px; text-align:right; color:#aaa; font-size:11px; }
+  .mogu-control .mogu-value { min-width:28px; text-align:center; color:#eee; font-variant-numeric:tabular-nums; font-size:11px; }
+  .mogu-control input[type=range] { -webkit-appearance:none; appearance:none; height:3px; background:#333; border-radius:2px; outline:none; flex:1; }
+  .mogu-control input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; border-radius:50%; background:#E8A840; cursor:pointer; }
+  .mogu-toggle { position:relative; width:32px; height:18px; background:#333; border-radius:9px; cursor:pointer; transition:background 0.2s; flex-shrink:0; }
+  .mogu-toggle.on { background:#E8A840; }
+  .mogu-toggle .mogu-toggle-knob { position:absolute; top:2px; left:2px; width:14px; height:14px; background:#eee; border-radius:50%; transition:left 0.2s; }
+  .mogu-toggle.on .mogu-toggle-knob { left:16px; }
+  .mogu-stepper { display:flex; align-items:center; gap:3px; }
+  .mogu-stepper button { width:22px; height:22px; border:none; border-radius:3px; background:#333; color:#eee; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .mogu-stepper button:hover { background:#E8A840; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="panel" class="control-panel">
+  <div class="panel-header">Dept-Agent Architecture</div>
+</div>
+<script>
+// ============================================================
+// Inlined drawing code from widgets.js
+// ============================================================
+function roundRect(ctx,x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();}
+function lightenColor(hex,amount){hex=hex.replace('#','');if(hex.length===3)hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];var r=parseInt(hex.substring(0,2),16),g=parseInt(hex.substring(2,4),16),b=parseInt(hex.substring(4,6),16);r=Math.round(r+(255-r)*amount);g=Math.round(g+(255-g)*amount);b=Math.round(b+(255-b)*amount);return'#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);}
+function lerpColor(cA,cB,t){function p(h){h=h.replace('#','');if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];return[parseInt(h.substring(0,2),16),parseInt(h.substring(2,4),16),parseInt(h.substring(4,6),16)];}var a=p(cA),b=p(cB);var r=Math.round(a[0]+(b[0]-a[0])*t),g=Math.round(a[1]+(b[1]-a[1])*t),bl=Math.round(a[2]+(b[2]-a[2])*t);return'#'+((1<<24)+(r<<16)+(g<<8)+bl).toString(16).slice(1);}
+var ease={inOut:function(t){return t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;},out:function(t){return 1-Math.pow(1-t,3);},_in:function(t){return t*t*t;},spring:function(t,d){d=d!==undefined?d:0.5;return 1-Math.exp(-6*t)*Math.cos(t*Math.PI*2*(1+d*3));}};
+function idleBounce(time,period,amplitude){period=period||2.5;amplitude=amplitude||2;return Math.sin((time/period)*Math.PI*2)*amplitude;}
+
+function drawExpression(ctx,expression,s){
+  var lw=2.5*s;
+  switch(expression){
+    case'curious':ctx.fillStyle='#0a0a0a';ctx.beginPath();ctx.arc(60*s,115*s,4.5*s,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(80*s,113*s,5.5*s,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#0a0a0a';ctx.lineWidth=lw;ctx.beginPath();ctx.arc(70*s,129*s,3.5*s,0,Math.PI*2);ctx.stroke();break;
+    case'processing':ctx.strokeStyle='#0a0a0a';ctx.lineWidth=3*s;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(54*s,115*s);ctx.lineTo(66*s,115*s);ctx.stroke();ctx.beginPath();ctx.moveTo(74*s,115*s);ctx.lineTo(86*s,115*s);ctx.stroke();ctx.lineWidth=lw;ctx.beginPath();ctx.moveTo(60*s,128*s);ctx.quadraticCurveTo(65*s,124*s,70*s,128*s);ctx.quadraticCurveTo(75*s,132*s,80*s,128*s);ctx.stroke();break;
+    case'proud':ctx.strokeStyle='#0a0a0a';ctx.lineWidth=3*s;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(55*s,114*s);ctx.quadraticCurveTo(60*s,110*s,65*s,114*s);ctx.stroke();ctx.beginPath();ctx.moveTo(75*s,114*s);ctx.quadraticCurveTo(80*s,110*s,85*s,114*s);ctx.stroke();ctx.lineWidth=lw;ctx.beginPath();ctx.moveTo(60*s,126*s);ctx.quadraticCurveTo(70*s,136*s,80*s,126*s);ctx.stroke();break;
+    case'alert':ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(60*s,113*s,6*s,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(80*s,113*s,6*s,0,Math.PI*2);ctx.fill();ctx.fillStyle='#0a0a0a';ctx.beginPath();ctx.arc(61*s,114*s,3.5*s,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(81*s,114*s,3.5*s,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#0a0a0a';ctx.lineWidth=lw;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(64*s,129*s);ctx.lineTo(70*s,124*s);ctx.lineTo(76*s,129*s);ctx.stroke();break;
+    default:ctx.fillStyle='#0a0a0a';ctx.beginPath();ctx.arc(60*s,115*s,4.5*s,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(80*s,115*s,4.5*s,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#0a0a0a';ctx.lineWidth=lw;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(63*s,127*s);ctx.quadraticCurveTo(70*s,133*s,77*s,127*s);ctx.stroke();break;
+  }
+}
+
+function drawMogu(ctx,x,y,size,capColor,expression,capShape,texture){
+  expression=expression||'neutral';var s=size/170;
+  var offsetX=x-70*s,offsetY=y-85*s;
+  ctx.save();ctx.translate(offsetX,offsetY);
+  var highlightColor=lightenColor(capColor,0.2),spotColor=lightenColor(capColor,0.25);
+  ctx.fillStyle='#EBE0D0';ctx.beginPath();ctx.ellipse(58*s,145*s,10*s,4*s,0,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.ellipse(82*s,145*s,10*s,4*s,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#F5EDE0';roundRect(ctx,50*s,95*s,40*s,50*s,14*s);ctx.fill();
+  if(capShape){capShape(ctx,70*s,82*s,52*s,38*s);ctx.fillStyle=capColor;ctx.fill();}else{ctx.fillStyle=capColor;ctx.beginPath();ctx.ellipse(70*s,82*s,52*s,38*s,0,0,Math.PI*2);ctx.fill();}
+  ctx.globalAlpha=0.5;ctx.fillStyle=highlightColor;ctx.beginPath();ctx.ellipse(55*s,68*s,18*s,10*s,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;
+  if(texture){texture(ctx,70*s,82*s,52*s,38*s,spotColor);}else{ctx.globalAlpha=0.7;ctx.fillStyle=spotColor;ctx.beginPath();ctx.arc(42*s,72*s,6*s,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(68*s,55*s,5*s,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(90*s,68*s,7*s,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;}
+  drawExpression(ctx,expression,s);ctx.restore();
+}
+
+// ============================================================
+// Custom cap shapes
+// ============================================================
+function splitCap(ctx,cx,cy,capRx,capRy){ctx.beginPath();ctx.ellipse(cx-capRx*0.35,cy,capRx*0.55,capRy,0,0,Math.PI*2);ctx.ellipse(cx+capRx*0.35,cy,capRx*0.55,capRy,0,0,Math.PI*2);}
+function wavyCap(ctx,cx,cy,capRx,capRy){ctx.beginPath();var steps=12;for(var i=0;i<=steps;i++){var angle=(i/steps)*Math.PI*2;var wobble=1+Math.sin(angle*4)*0.12;var px=cx+Math.cos(angle)*capRx*wobble;var py=cy+Math.sin(angle)*capRy*wobble;if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}ctx.closePath();}
+function flatCap(ctx,cx,cy,capRx,capRy){ctx.beginPath();ctx.ellipse(cx,cy,capRx*1.1,capRy*0.55,0,0,Math.PI*2);}
+function spikyCap(ctx,cx,cy,capRx,capRy){ctx.beginPath();var spikes=8;for(var i=0;i<=spikes*2;i++){var angle=(i/(spikes*2))*Math.PI*2-Math.PI/2;var r=i%2===0?1.2:0.85;var px=cx+Math.cos(angle)*capRx*r;var py=cy+Math.sin(angle)*capRy*r;if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}ctx.closePath();}
+
+// ============================================================
+// Texture functions
+// ============================================================
+function constellationTexture(ctx,cx,cy,capRx,capRy,sc){var n=[{x:cx-capRx*0.4,y:cy-capRy*0.3},{x:cx+capRx*0.1,y:cy-capRy*0.5},{x:cx+capRx*0.4,y:cy-capRy*0.2},{x:cx-capRx*0.2,y:cy+capRy*0.1},{x:cx+capRx*0.25,y:cy+capRy*0.2}];ctx.globalAlpha=0.5;ctx.strokeStyle=sc;ctx.lineWidth=1;for(var i=0;i<n.length-1;i++){ctx.beginPath();ctx.moveTo(n[i].x,n[i].y);ctx.lineTo(n[i+1].x,n[i+1].y);ctx.stroke();}ctx.beginPath();ctx.moveTo(n[0].x,n[0].y);ctx.lineTo(n[3].x,n[3].y);ctx.stroke();ctx.globalAlpha=0.7;ctx.fillStyle=sc;for(var i=0;i<n.length;i++){ctx.beginPath();ctx.arc(n[i].x,n[i].y,capRx*0.04,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;}
+function circuitTexture(ctx,cx,cy,capRx,capRy,sc){ctx.globalAlpha=0.45;ctx.strokeStyle=sc;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(cx-capRx*0.5,cy);ctx.lineTo(cx-capRx*0.1,cy);ctx.lineTo(cx-capRx*0.1,cy-capRy*0.4);ctx.lineTo(cx+capRx*0.2,cy-capRy*0.4);ctx.stroke();ctx.beginPath();ctx.moveTo(cx,cy+capRy*0.2);ctx.lineTo(cx+capRx*0.3,cy+capRy*0.2);ctx.lineTo(cx+capRx*0.3,cy-capRy*0.1);ctx.stroke();ctx.fillStyle=sc;var j=[{x:cx-capRx*0.1,y:cy},{x:cx+capRx*0.2,y:cy-capRy*0.4},{x:cx+capRx*0.3,y:cy-capRy*0.1}];for(var k=0;k<j.length;k++){ctx.beginPath();ctx.arc(j[k].x,j[k].y,capRx*0.03,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=1;}
+function scalesTexture(ctx,cx,cy,capRx,capRy,sc){ctx.globalAlpha=0.4;ctx.strokeStyle=sc;ctx.lineWidth=1.5;var rows=3,cols=4;for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){var sx=cx+(c-cols/2+0.5)*capRx*0.28;var sy=cy+(r-rows/2+0.5)*capRy*0.35;ctx.beginPath();ctx.arc(sx,sy,capRx*0.12,0,Math.PI,true);ctx.stroke();}ctx.globalAlpha=1;}
+function swirlTexture(ctx,cx,cy,capRx,capRy,sc){ctx.globalAlpha=0.4;ctx.strokeStyle=sc;ctx.lineWidth=2;ctx.beginPath();for(var i=0;i<=50;i++){var t=i/50;var angle=t*Math.PI*3;var radius=t*capRx*0.5;var px=cx+Math.cos(angle)*radius;var py=cy+Math.sin(angle)*radius*(capRy/capRx);if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}ctx.stroke();ctx.globalAlpha=1;}
+function hexTexture(ctx,cx,cy,capRx,capRy,sc){ctx.globalAlpha=0.4;ctx.strokeStyle=sc;ctx.lineWidth=1.2;var hexR=capRx*0.12;var cols=4,rows=3;for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){var hx=cx+(c-cols/2+0.5+(r%2)*0.5)*hexR*1.8;var hy=cy+(r-rows/2+0.5)*hexR*1.5;ctx.beginPath();for(var ss=0;ss<=6;ss++){var a=(ss/6)*Math.PI*2-Math.PI/6;var px=hx+Math.cos(a)*hexR;var py=hy+Math.sin(a)*hexR;if(ss===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}ctx.closePath();ctx.stroke();}ctx.globalAlpha=1;}
+
+// ============================================================
+// Bezier helper
+// ============================================================
+function bezier(t,p0,p1,p2){var u=1-t;return{x:u*u*p0.x+2*u*t*p1.x+t*t*p2.x,y:u*u*p0.y+2*u*t*p1.y+t*t*p2.y};}
+
+// ============================================================
+// UI Controls (inlined from widgets.js)
+// ============================================================
+function createSlider(container,label,min,max,value,step,onChange){var row=document.createElement('div');row.className='mogu-control';var lbl=document.createElement('label');lbl.textContent=label;var input=document.createElement('input');input.type='range';input.min=min;input.max=max;input.value=value;input.step=step;var val=document.createElement('span');val.className='mogu-value';val.textContent=value;input.addEventListener('input',function(){var v=parseFloat(input.value);val.textContent=v;onChange(v);});row.appendChild(lbl);row.appendChild(input);row.appendChild(val);container.appendChild(row);return input;}
+function createToggle(container,label,value,onChange){var row=document.createElement('div');row.className='mogu-control';var lbl=document.createElement('label');lbl.textContent=label;var toggle=document.createElement('div');toggle.className='mogu-toggle'+(value?' on':'');var knob=document.createElement('div');knob.className='mogu-toggle-knob';toggle.appendChild(knob);var state=value;toggle.addEventListener('click',function(){state=!state;toggle.className='mogu-toggle'+(state?' on':'');onChange(state);});row.appendChild(lbl);row.appendChild(toggle);container.appendChild(row);return toggle;}
+function createStepper(container,label,min,max,value,onChange){var row=document.createElement('div');row.className='mogu-control';var lbl=document.createElement('label');lbl.textContent=label;var stepper=document.createElement('div');stepper.className='mogu-stepper';var btnM=document.createElement('button');btnM.textContent='\u2212';var val=document.createElement('span');val.className='mogu-value';val.textContent=value;var btnP=document.createElement('button');btnP.textContent='+';var cur=value;function upd(v){cur=Math.max(min,Math.min(max,v));val.textContent=cur;onChange(cur);}btnM.addEventListener('click',function(){upd(cur-1);});btnP.addEventListener('click',function(){upd(cur+1);});stepper.appendChild(btnM);stepper.appendChild(val);stepper.appendChild(btnP);row.appendChild(lbl);row.appendChild(stepper);container.appendChild(row);return{setValue:function(v){cur=Math.max(min,Math.min(max,v));val.textContent=cur;}};}
+
+// ============================================================
+// State
+// ============================================================
+var state = {
+  missionRate: 3,
+  checkpointStrictness: 40,
+  deptCount: 4,
+  showCrossDept: true,
+  time: 0,
+  ceremonyDone: false,
+  ceremonyT: 0
+};
+
+var stats = { missions: 0, workItems: 0, approved: 0, reworked: 0, crossDept: 0 };
+
+// Departments config
+var DEPT_ALL = [
+  { id:'eng',  name:'Engineering', shortName:'Eng',  capColor:'#3068B0', capShape:null,     texture:circuitTexture,  phase:0 },
+  { id:'prod', name:'Product',     shortName:'Prod', capColor:'#C85080', capShape:wavyCap,  texture:swirlTexture,   phase:0.4 },
+  { id:'qa',   name:'QA',          shortName:'QA',   capColor:'#3A8860', capShape:spikyCap, texture:hexTexture,     phase:0.8 },
+  { id:'ops',  name:'Operations',  shortName:'Ops',  capColor:'#2898A0', capShape:flatCap,  texture:scalesTexture,  phase:1.2 }
+];
+
+// Living items
+var missions = [];       // diamonds falling from company
+var workItems = [];       // items orbiting departments
+var checkpointItems = []; // items at checkpoint zone
+var crossDeptItems = [];  // horizontal triangle requests
+var completedItems = [];  // green checks flying up
+var reworkItems = [];     // red items arcing back up
+
+// Spawn timers
+var missionSpawnTimer = 0;
+var crossDeptTimer = 0;
+var kairosTimer = 0;
+var kairosPulseX = -100;  // current x of KAIROS pulse wave
+var kairosActive = false;
+
+// Ceremony keywords
+var KEYWORDS = ['department','mission','checkpoint','workItem','KAIROS','escalation'];
+var kwPositions = [];
+
+// ============================================================
+// Canvas setup
+// ============================================================
+var canvas = document.getElementById('c');
+var ctx = canvas.getContext('2d');
+
+function resize(){
+  var dpr = window.devicePixelRatio || 1;
+  canvas.width = window.innerWidth * dpr;
+  canvas.height = window.innerHeight * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ============================================================
+// Layout helpers — positions adapt to viewport
+// ============================================================
+function W(){ return window.innerWidth; }
+function H(){ return window.innerHeight; }
+function companyPos(){ return { x: W()*0.5, y: H()*0.13 }; }
+function deptPositions(){
+  var n = state.deptCount;
+  var arr = [];
+  var totalW = W() * 0.7;
+  var startX = W() * 0.15;
+  var y = H() * 0.44;
+  for(var i=0;i<n;i++){
+    arr.push({ x: startX + (i+0.5)*(totalW/n), y: y });
+  }
+  return arr;
+}
+function checkpointY(){ return H() * 0.78; }
+
+// ============================================================
+// Controls
+// ============================================================
+var panel = document.getElementById('panel');
+createSlider(panel,'Missions',1,8,3,1,function(v){ state.missionRate=v; });
+createSlider(panel,'Strictness',10,90,40,5,function(v){ state.checkpointStrictness=v; });
+createStepper(panel,'Depts',2,4,4,function(v){ state.deptCount=v; });
+createToggle(panel,'Cross-Dept',true,function(v){ state.showCrossDept=v; });
+
+// ============================================================
+// Spawn functions
+// ============================================================
+function spawnMission(){
+  var cp = companyPos();
+  var n = state.deptCount;
+  var pieces = 2 + Math.floor(Math.random() * Math.min(3, n));
+  pieces = Math.min(pieces, n);
+  var targets = [];
+  var indices = [];
+  while(indices.length < pieces){
+    var idx = Math.floor(Math.random()*n);
+    if(indices.indexOf(idx)===-1) indices.push(idx);
+  }
+  var colors = ['#FFD966','#FF8C42','#FFB84D','#A3D977','#5BA3E0','#E066A6'];
+  var mColor = colors[Math.floor(Math.random()*colors.length)];
+  var dp = deptPositions();
+  for(var i=0;i<indices.length;i++){
+    var di = indices[i];
+    missions.push({
+      x: cp.x, y: cp.y,
+      startX: cp.x + (Math.random()-0.5)*30,
+      startY: cp.y + 30,
+      splitX: cp.x + (i - (indices.length-1)/2) * 40,
+      splitY: cp.y + (H()*0.44 - cp.y)*0.35,
+      endX: dp[di].x,
+      endY: dp[di].y - 30,
+      t: 0, color: mColor, deptIdx: di, phase: i*0.12
+    });
+  }
+  stats.missions++;
+}
+
+function spawnWorkItemFromMission(m){
+  var dp = deptPositions();
+  var d = dp[m.deptIdx];
+  workItems.push({
+    x: d.x, y: d.y,
+    deptIdx: m.deptIdx,
+    orbitAngle: Math.random()*Math.PI*2,
+    orbitSpeed: 0.8 + Math.random()*1.2,
+    orbitR: 20 + Math.random()*15,
+    color: m.color,
+    lifeTimer: 2 + Math.random()*3,
+    size: 4 + Math.random()*3
+  });
+  stats.workItems++;
+}
+
+function sendToCheckpoint(wi){
+  var dp = deptPositions();
+  var d = dp[wi.deptIdx];
+  checkpointItems.push({
+    x: d.x, y: d.y,
+    startX: d.x, startY: d.y,
+    endX: d.x + (Math.random()-0.5)*40, endY: checkpointY(),
+    t: 0, color: wi.color, deptIdx: wi.deptIdx,
+    reviewTimer: 0, reviewing: false, decided: false, approved: false
+  });
+}
+
+function spawnCrossDept(){
+  if(state.deptCount < 2) return;
+  var dp = deptPositions();
+  var fromIdx = Math.floor(Math.random()*state.deptCount);
+  var toIdx = fromIdx;
+  while(toIdx===fromIdx) toIdx = Math.floor(Math.random()*state.deptCount);
+  crossDeptItems.push({
+    fromIdx: fromIdx, toIdx: toIdx,
+    x: dp[fromIdx].x, y: dp[fromIdx].y,
+    startX: dp[fromIdx].x, startY: dp[fromIdx].y,
+    endX: dp[toIdx].x, endY: dp[toIdx].y,
+    t: 0, returning: false, color: '#FFD966'
+  });
+  stats.crossDept++;
+}
+
+// ============================================================
+// Update
+// ============================================================
+var lastTime = 0;
+
+function update(dt){
+  if(!state.ceremonyDone){
+    state.ceremonyT += dt;
+    if(state.ceremonyT >= 3.0) state.ceremonyDone = true;
+    return;
+  }
+
+  state.time += dt;
+
+  // Mission spawning
+  missionSpawnTimer += dt;
+  var interval = 4.0 / state.missionRate;
+  if(missionSpawnTimer > interval){
+    missionSpawnTimer = 0;
+    spawnMission();
+  }
+
+  // Cross-dept spawning
+  if(state.showCrossDept){
+    crossDeptTimer += dt;
+    if(crossDeptTimer > 3.5){
+      crossDeptTimer = 0;
+      spawnCrossDept();
+    }
+  }
+
+  // KAIROS tick
+  kairosTimer += dt;
+  if(kairosTimer > 3.0){
+    kairosTimer = 0;
+    kairosActive = true;
+    kairosPulseX = -20;
+  }
+  if(kairosActive){
+    kairosPulseX += W() * dt * 0.7;
+    if(kairosPulseX > W() + 50) kairosActive = false;
+  }
+
+  var dp = deptPositions();
+
+  // Update missions (diamond decomposition)
+  for(var i=missions.length-1;i>=0;i--){
+    var m = missions[i];
+    m.t += dt * 0.9;
+    if(m.t >= 1){
+      spawnWorkItemFromMission(m);
+      missions.splice(i,1);
+    }
+  }
+
+  // Update work items (orbit inside dept, then send to checkpoint)
+  for(var i=workItems.length-1;i>=0;i--){
+    var wi = workItems[i];
+    wi.orbitAngle += wi.orbitSpeed * dt;
+    wi.lifeTimer -= dt;
+    if(wi.deptIdx < dp.length){
+      wi.x = dp[wi.deptIdx].x + Math.cos(wi.orbitAngle)*wi.orbitR;
+      wi.y = dp[wi.deptIdx].y + Math.sin(wi.orbitAngle)*wi.orbitR*0.5 - 5;
+    }
+    if(wi.lifeTimer <= 0){
+      sendToCheckpoint(wi);
+      workItems.splice(i,1);
+    }
+  }
+
+  // Update checkpoint items
+  for(var i=checkpointItems.length-1;i>=0;i--){
+    var ci = checkpointItems[i];
+    if(!ci.reviewing){
+      ci.t += dt * 1.5;
+      if(ci.t >= 1){
+        ci.t = 1;
+        ci.reviewing = true;
+        ci.reviewTimer = 0;
+      }
+      var et = ease.out(Math.min(ci.t,1));
+      var ctrl = { x:(ci.startX+ci.endX)/2, y: ci.startY + (ci.endY-ci.startY)*0.3 };
+      var pos = bezier(et,{x:ci.startX,y:ci.startY},ctrl,{x:ci.endX,y:ci.endY});
+      ci.x = pos.x; ci.y = pos.y;
+    } else if(!ci.decided){
+      ci.reviewTimer += dt;
+      if(ci.reviewTimer > 1.2){
+        ci.decided = true;
+        ci.approved = Math.random()*100 > state.checkpointStrictness;
+        if(ci.approved){
+          stats.approved++;
+          completedItems.push({
+            x: ci.x, y: ci.y,
+            startX: ci.x, startY: ci.y,
+            endX: companyPos().x + (Math.random()-0.5)*60,
+            endY: companyPos().y + 20,
+            t: 0, color: '#52C77A'
+          });
+        } else {
+          stats.reworked++;
+          if(ci.deptIdx < dp.length){
+            reworkItems.push({
+              x: ci.x, y: ci.y,
+              startX: ci.x, startY: ci.y,
+              endX: dp[ci.deptIdx].x + (Math.random()-0.5)*20,
+              endY: dp[ci.deptIdx].y,
+              t: 0, color: '#FF4D4D', deptIdx: ci.deptIdx
+            });
+          }
+        }
+        checkpointItems.splice(i,1);
+      }
+    }
+  }
+
+  // Update completed items (fly up)
+  for(var i=completedItems.length-1;i>=0;i--){
+    var ci = completedItems[i];
+    ci.t += dt * 1.2;
+    if(ci.t >= 1){ completedItems.splice(i,1); continue; }
+    var et = ease.out(ci.t);
+    var ctrl = { x:(ci.startX+ci.endX)/2, y: ci.startY - 60 };
+    var pos = bezier(et,{x:ci.startX,y:ci.startY},ctrl,{x:ci.endX,y:ci.endY});
+    ci.x = pos.x; ci.y = pos.y;
+  }
+
+  // Update rework items (arc back to dept)
+  for(var i=reworkItems.length-1;i>=0;i--){
+    var ri = reworkItems[i];
+    ri.t += dt * 1.0;
+    if(ri.t >= 1){
+      // Respawn as work item in that dept
+      if(ri.deptIdx < dp.length){
+        workItems.push({
+          x: dp[ri.deptIdx].x, y: dp[ri.deptIdx].y,
+          deptIdx: ri.deptIdx,
+          orbitAngle: Math.random()*Math.PI*2,
+          orbitSpeed: 0.8+Math.random()*1.2,
+          orbitR: 20+Math.random()*15,
+          color: ri.color,
+          lifeTimer: 2+Math.random()*2,
+          size: 4+Math.random()*3
+        });
+      }
+      reworkItems.splice(i,1);
+      continue;
+    }
+    var et = ease.inOut(ri.t);
+    var ctrl = { x: ri.startX + (ri.endX - ri.startX)*0.5 - 60, y: ri.startY - 80 };
+    var pos = bezier(et,{x:ri.startX,y:ri.startY},ctrl,{x:ri.endX,y:ri.endY});
+    ri.x = pos.x; ri.y = pos.y;
+  }
+
+  // Update cross-dept items
+  for(var i=crossDeptItems.length-1;i>=0;i--){
+    var cd = crossDeptItems[i];
+    cd.t += dt * 0.8;
+    if(cd.t >= 1){
+      if(!cd.returning){
+        cd.returning = true;
+        cd.t = 0;
+        var tmp = cd.startX; cd.startX = cd.endX; cd.endX = tmp;
+        var tmpY = cd.startY; cd.startY = cd.endY; cd.endY = tmpY;
+      } else {
+        crossDeptItems.splice(i,1);
+        continue;
+      }
+    }
+    var et = ease.inOut(Math.min(cd.t,1));
+    var arcDir = cd.returning ? 30 : -30;
+    var ctrl = { x:(cd.startX+cd.endX)/2, y: cd.startY + arcDir };
+    var pos = bezier(et,{x:cd.startX,y:cd.startY},ctrl,{x:cd.endX,y:cd.endY});
+    cd.x = pos.x; cd.y = pos.y;
+  }
+}
+
+// ============================================================
+// Draw
+// ============================================================
+function draw(){
+  var w = W(), h = H();
+  ctx.clearRect(0,0,w,h);
+
+  // Background
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0,0,w,h);
+
+  // --- ABSORPTION CEREMONY ---
+  if(!state.ceremonyDone){
+    drawCeremony(w,h);
+    return;
+  }
+
+  var cp = companyPos();
+  var dp = deptPositions();
+  var ckY = checkpointY();
+  var t = state.time;
+
+  // KAIROS pulse wave
+  if(kairosActive){
+    var grad = ctx.createLinearGradient(kairosPulseX-40,0,kairosPulseX+40,0);
+    grad.addColorStop(0,'rgba(58,136,96,0)');
+    grad.addColorStop(0.5,'rgba(58,136,96,0.12)');
+    grad.addColorStop(1,'rgba(58,136,96,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(kairosPulseX-40,0,80,h);
+  }
+
+  // --- Connection lines ---
+  // Company to departments (dashed)
+  ctx.save();
+  ctx.setLineDash([6,4]);
+  ctx.strokeStyle = 'rgba(232,168,64,0.15)';
+  ctx.lineWidth = 1;
+  for(var i=0;i<dp.length;i++){
+    ctx.beginPath();
+    ctx.moveTo(cp.x, cp.y + 40);
+    ctx.lineTo(dp[i].x, dp[i].y - 40);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Departments to checkpoint zone (solid thin)
+  ctx.strokeStyle = 'rgba(104,80,160,0.12)';
+  ctx.lineWidth = 1;
+  for(var i=0;i<dp.length;i++){
+    ctx.beginPath();
+    ctx.moveTo(dp[i].x, dp[i].y + 40);
+    ctx.lineTo(dp[i].x, ckY - 30);
+    ctx.stroke();
+  }
+
+  // Cross-dept horizontal dotted lines
+  if(state.showCrossDept && dp.length > 1){
+    ctx.save();
+    ctx.setLineDash([2,4]);
+    ctx.strokeStyle = 'rgba(255,217,102,0.08)';
+    ctx.lineWidth = 1;
+    for(var i=0;i<dp.length-1;i++){
+      ctx.beginPath();
+      ctx.moveTo(dp[i].x + 30, dp[i].y);
+      ctx.lineTo(dp[i+1].x - 30, dp[i+1].y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // --- Draw missions (falling diamonds) ---
+  for(var i=0;i<missions.length;i++){
+    var m = missions[i];
+    var mt = Math.max(0, m.t - m.phase);
+    mt = Math.min(mt, 1);
+    var et = ease.inOut(mt);
+    var px, py;
+    if(et < 0.4){
+      // First segment: company to split point
+      var seg = et / 0.4;
+      px = m.startX + (m.splitX - m.startX) * seg;
+      py = m.startY + (m.splitY - m.startY) * seg;
+    } else {
+      // Second segment: split point to department
+      var seg = (et - 0.4) / 0.6;
+      var ctrl = { x: (m.splitX+m.endX)/2, y: m.splitY + (m.endY - m.splitY)*0.3 };
+      var pos = bezier(seg, {x:m.splitX,y:m.splitY}, ctrl, {x:m.endX,y:m.endY});
+      px = pos.x; py = pos.y;
+    }
+    // Draw diamond
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(Math.PI/4);
+    var ds = 6 + (1-mt)*4;
+    ctx.fillStyle = m.color;
+    ctx.globalAlpha = 0.6 + mt*0.4;
+    ctx.fillRect(-ds/2,-ds/2,ds,ds);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  // --- Draw work items orbiting departments ---
+  for(var i=0;i<workItems.length;i++){
+    var wi = workItems[i];
+    ctx.fillStyle = wi.color;
+    ctx.globalAlpha = 0.75;
+    ctx.beginPath();
+    ctx.arc(wi.x, wi.y, wi.size, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // --- Draw cross-dept items (triangles) ---
+  for(var i=0;i<crossDeptItems.length;i++){
+    var cd = crossDeptItems[i];
+    ctx.save();
+    ctx.translate(cd.x, cd.y);
+    ctx.fillStyle = cd.returning ? '#A3D977' : '#FFD966';
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(0,-5); ctx.lineTo(5,4); ctx.lineTo(-5,4);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
+  // --- Draw checkpoint items ---
+  for(var i=0;i<checkpointItems.length;i++){
+    var ci = checkpointItems[i];
+    ctx.fillStyle = ci.reviewing ? '#FFB84D' : ci.color;
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.arc(ci.x, ci.y, 5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // --- Draw completed items (green checks flying up) ---
+  for(var i=0;i<completedItems.length;i++){
+    var ci = completedItems[i];
+    ctx.save();
+    ctx.globalAlpha = 1 - ci.t * 0.6;
+    ctx.strokeStyle = '#52C77A';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(ci.x-4, ci.y);
+    ctx.lineTo(ci.x-1, ci.y+3);
+    ctx.lineTo(ci.x+4, ci.y-3);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // --- Draw rework items (red X arcing back) ---
+  for(var i=0;i<reworkItems.length;i++){
+    var ri = reworkItems[i];
+    ctx.save();
+    ctx.globalAlpha = 0.9;
+    ctx.strokeStyle = '#FF4D4D';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(ri.x-3, ri.y-3); ctx.lineTo(ri.x+3, ri.y+3);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(ri.x+3, ri.y-3); ctx.lineTo(ri.x-3, ri.y+3);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // --- Company Mogu ---
+  var compBounce = idleBounce(t, 3.0, 3);
+  var compExpr = 'neutral';
+  // Inflate cap when spawning mission
+  if(missionSpawnTimer < 0.3 && missions.length > 0) compExpr = 'processing';
+  drawMogu(ctx, cp.x, cp.y + compBounce, 130, '#E8A840', compExpr, splitCap, constellationTexture);
+
+  // Company label
+  ctx.fillStyle = '#ccc';
+  ctx.font = '13px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Company', cp.x, cp.y + 130*0.35 + 14 + compBounce);
+
+  // Timeline labels
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('NorthStar', 12, cp.y + 5);
+  ctx.fillText('Cycle', 12, dp.length > 0 ? dp[0].y - 40 : h*0.35);
+  ctx.fillText('Checkpoint', 12, ckY - 20);
+
+  // --- Department Mogus ---
+  var deptData = DEPT_ALL.slice(0, state.deptCount);
+  for(var i=0;i<deptData.length;i++){
+    var dd = deptData[i];
+    var dPos = dp[i];
+    var bounce = idleBounce(t + dd.phase, 2.5, 2.5);
+
+    // Determine expression
+    var expr = 'neutral';
+    var wipCount = 0;
+    for(var j=0;j<workItems.length;j++) if(workItems[j].deptIdx===i) wipCount++;
+    if(wipCount >= 5) expr = 'processing';
+
+    // KAIROS tick: eyes look down during pulse
+    if(kairosActive && Math.abs(kairosPulseX - dPos.x) < 80) expr = 'curious';
+
+    // Cross-dept receiving
+    for(var j=0;j<crossDeptItems.length;j++){
+      if(crossDeptItems[j].toIdx===i && !crossDeptItems[j].returning && crossDeptItems[j].t > 0.7)
+        expr = 'curious';
+    }
+
+    var deptSize = 95;
+    drawMogu(ctx, dPos.x, dPos.y + bounce, deptSize, dd.capColor, expr, dd.capShape, dd.texture);
+
+    // WIP counter (right side of Mogu)
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'left';
+    if(wipCount > 0){
+      ctx.fillText('WIP:'+wipCount, dPos.x + deptSize*0.32, dPos.y - deptSize*0.15 + bounce);
+    }
+
+    // Department label (below Mogu, offset by moguSize * 0.35 + clearance)
+    ctx.fillStyle = '#aaa';
+    ctx.font = '11px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    var labelY = dPos.y + deptSize * 0.35 + 14 + bounce;
+    ctx.fillText(state.deptCount > 3 ? dd.shortName : dd.name, dPos.x, labelY);
+  }
+
+  // --- Checkpoint zone ---
+  // Subtle divider line
+  ctx.strokeStyle = 'rgba(104,80,160,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4,6]);
+  ctx.beginPath();
+  ctx.moveTo(w*0.08, ckY - 30);
+  ctx.lineTo(w*0.92, ckY - 30);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Checkpoint zone label
+  ctx.fillStyle = 'rgba(104,80,160,0.35)';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('CHECKPOINT GATE', w*0.5, ckY - 35);
+
+  // Draw reviewer Mogus for active reviews
+  var reviewerSlots = [];
+  for(var i=0;i<checkpointItems.length;i++){
+    var ci = checkpointItems[i];
+    if(ci.reviewing){
+      var rx = ci.x;
+      var ry = ckY;
+      var revExpr = ci.reviewTimer < 0.6 ? 'processing' : (ci.decided ? (ci.approved ? 'proud' : 'alert') : 'processing');
+      var revBounce = idleBounce(t + i*0.3, 2.0, 1.5);
+      drawMogu(ctx, rx, ry + revBounce, 50, '#6850A0', revExpr, null, null);
+    }
+  }
+
+  // --- Stats overlay (bottom-left) ---
+  ctx.fillStyle = 'rgba(10,10,10,0.7)';
+  roundRect(ctx, 12, h - 42, 400, 28, 6);
+  ctx.fill();
+  ctx.fillStyle = '#888';
+  ctx.font = '11px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(
+    'Missions: ' + stats.missions +
+    '  |  Work Items: ' + stats.workItems +
+    '  |  Approved: ' + stats.approved +
+    '  |  Reworked: ' + stats.reworked +
+    '  |  Cross-Dept: ' + stats.crossDept,
+    20, h - 24
+  );
+
+  // KAIROS label during pulse
+  if(kairosActive){
+    ctx.fillStyle = 'rgba(58,136,96,0.5)';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('KAIROS TICK', kairosPulseX, h - 52);
+  }
+}
+
+// ============================================================
+// Absorption Ceremony
+// ============================================================
+function drawCeremony(w,h){
+  var ct = state.ceremonyT;
+  var cp = { x: w*0.5, y: h*0.4 };
+  var bounce = idleBounce(ct, 2.5, 2);
+
+  // Initialize keyword positions
+  if(kwPositions.length === 0){
+    for(var i=0;i<KEYWORDS.length;i++){
+      kwPositions.push({
+        x: cp.x + 150 + Math.random()*80,
+        y: cp.y - 80 + i * 28,
+        origX: cp.x + 150 + Math.random()*80,
+        origY: cp.y - 80 + i * 28,
+        alpha: 0
+      });
+    }
+  }
+
+  var expr = 'neutral';
+  var capColor = '#FF4D4D';
+  var capInflate = 1.0;
+
+  // Phase 1: 0-0.8s — idle, keywords fade in
+  if(ct < 0.8){
+    expr = 'neutral';
+    var fadeT = ct / 0.8;
+    for(var i=0;i<kwPositions.length;i++){
+      var stagger = Math.max(0, fadeT - i*0.08);
+      kwPositions[i].alpha = Math.min(stagger * 2, 1);
+    }
+  }
+  // Phase 2: 0.8-1.5s — curious, keywords drift toward cap
+  else if(ct < 1.5){
+    expr = 'curious';
+    var driftT = (ct - 0.8) / 0.7;
+    var et = ease.out(driftT);
+    for(var i=0;i<kwPositions.length;i++){
+      var tgtX = cp.x + (Math.random()-0.5)*30;
+      var tgtY = cp.y - 30;
+      kwPositions[i].x = kwPositions[i].origX + (tgtX - kwPositions[i].origX) * et;
+      kwPositions[i].y = kwPositions[i].origY + (tgtY - kwPositions[i].origY) * et;
+      kwPositions[i].alpha = 1 - et * 0.4;
+    }
+  }
+  // Phase 3: 1.5-2.2s — processing, cap inflates
+  else if(ct < 2.2){
+    expr = 'processing';
+    var inflateT = (ct - 1.5) / 0.7;
+    capInflate = 1 + 0.15 * ease.spring(inflateT, 0.5);
+    for(var i=0;i<kwPositions.length;i++){
+      kwPositions[i].alpha = Math.max(0, 0.6 - inflateT);
+    }
+  }
+  // Phase 4: 2.2-3.0s — proud, color transition
+  else {
+    expr = 'proud';
+    var colorT = (ct - 2.2) / 0.8;
+    var et = ease.out(colorT);
+    capColor = lerpColor('#FF4D4D', '#E8A840', et);
+    capInflate = 1 + 0.15 * (1 - et);
+    for(var i=0;i<kwPositions.length;i++) kwPositions[i].alpha = 0;
+    // Final hop
+    if(colorT > 0.6 && colorT < 0.9){
+      var hopT = (colorT - 0.6) / 0.3;
+      bounce -= Math.sin(hopT * Math.PI) * 8;
+    }
+  }
+
+  // Draw inflated cap shape
+  var capShapeFn = function(ctx2, cx, cy, capRx, capRy){
+    ctx2.beginPath();
+    ctx2.ellipse(cx, cy, capRx, capRy * capInflate, 0, 0, Math.PI*2);
+  };
+
+  drawMogu(ctx, cp.x, cp.y + bounce, 140, capColor, expr, ct < 2.2 ? capShapeFn : splitCap, constellationTexture);
+
+  // Draw keywords
+  ctx.font = '13px monospace';
+  ctx.textAlign = 'center';
+  for(var i=0;i<kwPositions.length;i++){
+    if(kwPositions[i].alpha <= 0) continue;
+    ctx.globalAlpha = kwPositions[i].alpha;
+    ctx.fillStyle = '#aaa';
+    ctx.fillText(KEYWORDS[i], kwPositions[i].x, kwPositions[i].y);
+  }
+  ctx.globalAlpha = 1;
+
+  // Title
+  ctx.fillStyle = 'rgba(255,255,255,0.4)';
+  ctx.font = '14px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Department-Agent Company Architecture', w*0.5, h*0.75);
+}
+
+// ============================================================
+// Game loop
+// ============================================================
+function tick(timestamp){
+  var dt = lastTime ? Math.min((timestamp - lastTime)/1000, 0.05) : 0;
+  lastTime = timestamp;
+  update(dt);
+  draw();
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+</script>
+</body>
+</html>
