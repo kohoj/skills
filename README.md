@@ -88,6 +88,16 @@ High-quality image-to-ASCII conversion using shape-vector matching. Instead of t
 npx skills add https://github.com/kohoj/skills --skill ascii-rendering
 ```
 
+### mogu-visual
+
+Transform technical descriptions into interactive animated HTML visualizations starring Mogu — a mushroom character whose cap shape, texture, and color adapt to each concept. Generates self-contained HTML files with Canvas 2D animations and interactive parameter controls.
+
+**Features:** Mogu character brand with 5 expressions, 8+ cap shapes, 8+ cap textures, 9 scene archetypes, interactive parameter controls, absorption ceremony intro animation.
+
+```bash
+npx skills add https://github.com/kohoj/skills --skill mogu-visual
+```
+
 ## Prerequisites
 
 - **web-search**: Python 3.11+, [uv](https://github.com/astral-sh/uv)
@@ -98,6 +108,7 @@ npx skills add https://github.com/kohoj/skills --skill ascii-rendering
 - **hermes-agent-dissect**: Hermes Agent source tree in your project (no external dependencies)
 - **podcast-to-md**: Python 3.11+, [uv](https://github.com/astral-sh/uv). Local transcription requires faster-whisper (auto-installed on first use).
 - **ascii-rendering**: Python 3.9+, Pillow, NumPy. Optional: OpenCV (video/camera), SciPy (KD-tree acceleration).
+- **mogu-visual**: No dependencies. Generated HTML files may optionally load GSAP or D3 from CDN.
 
 ## License
 
