@@ -81,16 +81,72 @@ Select cap shapes, textures, and colors for each Mogu actor. Follow rules from
 
 ### Step 4: Generate HTML
 
-Produce a single self-contained HTML file with:
+Use the **MoguScene engine** (`components/mogu-engine.js`) to keep generated HTML short and focused on scene logic.
 
-- **Canvas 2D** for animation (60fps game loop via `requestAnimationFrame`)
-- **DOM overlay** for the control panel (sliders, toggles, steppers)
-- Drawing code patterns copied from `components/widgets.js`
-- **Absorption Ceremony** as the opening sequence (3-second intro)
-- CDN imports optional (GSAP, D3) -- only when they add clear value
+**HTML template:**
 
-The HTML file must open in any browser with no build step, no local server, no dependencies
-beyond optional CDN links.
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>[Scene Title] — Mogu Visual</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body { width:100%; height:100%; overflow:hidden; }
+    canvas { display:block; width:100%; height:100%; }
+  </style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="../components/mogu-engine.js"></script>
+<script>
+// --- Scene code starts here (target: 150-250 lines) ---
+var scene = new MoguScene(document.getElementById('c'), { title: '[Scene Title]' });
+
+// 1. Add actors
+scene.addActor('id', { label: 'Name', x: 0.5, y: 0.5, size: 80, cap: { color: '#FF4D4D' } });
+
+// 2. Add connections
+scene.connect('from', 'to', { style: 'dashed' });
+
+// 3. Add parameters
+scene.addParam({ id: 'rate', label: 'Rate', type: 'slider', min: 1, max: 30, value: 5, step: 1 });
+
+// 4. Scene logic
+scene.onUpdate(function(dt, time) { /* spawn items, manage state */ });
+scene.onDraw(function(ctx, w, h, time) { /* custom visuals */ });
+
+// 5. Start with absorption
+scene.start(['keyword1', 'keyword2'], '#targetCapColor');
+</script>
+</body>
+</html>
+```
+
+**Engine API quick reference:**
+
+| Method | Purpose |
+|--------|---------|
+| `addActor(id, config)` | Add a Mogu. Config: label, x, y (0-1), size, cap.color/shape/texture |
+| `removeActor(id)` | Remove a Mogu |
+| `setExpression(id, expr)` | Change expression: neutral/curious/processing/proud/alert |
+| `setCapColor(id, color)` | Animate cap color change |
+| `getActorPos(id)` | Get pixel position {x, y} |
+| `connect(from, to, opts)` | Draw line. Style: dashed/dotted/solid |
+| `addParam(config)` | Add control. Type: slider/toggle/stepper |
+| `param(id)` | Get current parameter value |
+| `spawnItem(config)` | Spawn flowing item. Config: from, to, color, speed, arc, onArrive |
+| `onUpdate(fn)` | Register per-frame update: fn(dt, time) |
+| `onDraw(fn)` | Register custom draw: fn(ctx, w, h, time) |
+| `setStat(key, value)` | Show stat in bottom-left |
+| `start(keywords?, color?)` | Begin (with optional absorption ceremony) |
+
+**Built-in cap shapes** (use by string name): dome, flat, pointy, wavy, bumpy, droopy, split, spiky
+
+**Built-in textures** (use by string name): spots, stripes, hex, circuit, swirl, constellation, scales, lightning
+
+**The rule: AI generates only scene-specific code.** The engine handles rendering, game loop, controls, labels, connections, items, and the absorption ceremony. If the generated HTML exceeds 300 lines, you're probably reimplementing something the engine already provides.
 
 ### Step 5: Quality Gate
 
@@ -324,10 +380,11 @@ function lerpColor(hex1, hex2, t) {
 
 ## Quick Reference Links
 
+- **MoguScene engine: `components/mogu-engine.js`** — load this in generated HTML, write only scene code
 - Character spec: `references/character.md`
 - Scene archetypes: `references/scenes.md`
 - Interaction patterns: `references/interactions.md`
 - Complete examples: `references/examples.md`
 - Canonical SVG: `components/mogu.svg`
 - Expression variants: `components/mogu-expressions.svg`
-- Canvas 2D code: `components/widgets.js`
+- Low-level drawing code (for reference, not direct use): `components/widgets.js`
