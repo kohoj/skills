@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoguScene Engine Test — Pipeline</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0a; }
+  canvas { display: block; width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script src="mogu-engine.js"></script>
+<script>
+// ============================================================
+// Test scene: Source -> Processor -> Sink pipeline
+// Demonstrates the MoguScene engine API.
+// ============================================================
+
+var scene = new MoguScene(document.getElementById('c'), {
+  background: '#0a0a0a',
+  title: 'Pipeline Demo'
+});
+
+// --- Actors ---
+scene.addActor('source', {
+  label: 'Source',
+  x: 0.15, y: 0.5,
+  size: 65,
+  cap: { color: '#FF4D4D' },
+  bouncePhase: 0
+});
+
+scene.addActor('processor', {
+  label: 'Processor',
+  x: 0.50, y: 0.5,
+  size: 100,
+  cap: { color: '#3068B0', shape: 'flat', texture: 'scales' },
+  bouncePeriod: 2.8,
+  bouncePhase: 0.5
+});
+
+scene.addActor('sink', {
+  label: 'Sink',
+  x: 0.85, y: 0.5,
+  size: 65,
+  cap: { color: '#52C77A', shape: 'wavy', texture: 'constellation' },
+  bouncePhase: 1.0
+});
+
+// --- Connections ---
+scene.connect('source', 'processor', { style: 'dashed' });
+scene.connect('processor', 'sink', { style: 'dashed' });
+
+// --- Controls ---
+scene.addParam({ id: 'rate', label: 'Emit Rate', type: 'slider', min: 1, max: 20, value: 5, step: 1 });
+scene.addParam({ id: 'speed', label: 'Speed', type: 'slider', min: 0.5, max: 4, value: 1.5, step: 0.1 });
+scene.addParam({ id: 'showGlow', label: 'Glow', type: 'toggle', value: true });
+
+// --- Scene logic ---
+var produced = 0, processed = 0, delivered = 0;
+var nextEmitAt = 0;
+var COLORS = ['#FF6B9D', '#FFB84D', '#A3D977', '#7B68EE', '#5BA3E0', '#FF8C42'];
+
+scene.onUpdate(function (dt, time) {
+  var rate = scene.param('rate');
+  var speed = scene.param('speed');
+  var glow = scene.param('showGlow');
+  var interval = 1.0 / rate;
+
+  if (time >= nextEmitAt) {
+    var color = COLORS[produced % COLORS.length];
+    scene.spawnItem({
+      from: 'source', to: 'processor',
+      color: color, speed: speed, arc: 25, glow: glow,
+      onArrive: function (item) {
+        processed++;
+        scene.setExpression('processor', 'processing');
+        // Forward to sink after brief "processing" expression
+        scene.spawnItem({
+          from: 'processor', to: 'sink',
+          color: item.color, speed: speed * 0.8, arc: 20, glow: glow,
+          onArrive: function () {
+            delivered++;
+            scene.setExpression('sink', 'proud');
+          }
+        });
+        // Reset processor expression after a moment
+        setTimeout(function () { scene.setExpression('processor', 'neutral'); }, 300);
+        setTimeout(function () { scene.setExpression('sink', 'neutral'); }, 500);
+      }
+    });
+    produced++;
+    scene.setExpression('source', 'curious');
+    setTimeout(function () { scene.setExpression('source', 'neutral'); }, 200);
+    nextEmitAt = time + interval;
+  }
+
+  // Stats
+  scene.setStat('Produced', produced);
+  scene.setStat('Processed', processed);
+  scene.setStat('Delivered', delivered);
+});
+
+// --- Start with absorption ceremony ---
+scene.start(['pipeline', 'source', 'processor', 'sink', 'stream'], '#3068B0');
+</script>
+</body>
+</html>
