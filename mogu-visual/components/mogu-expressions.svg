@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 750 200">
+  <!-- Neutral -->
+  <g id="neutral" transform="translate(5,15)">
+    <rect x="50" y="95" width="40" height="50" rx="14" fill="#F5EDE0"/>
+    <ellipse cx="70" cy="82" rx="52" ry="38" fill="#FF4D4D"/>
+    <ellipse cx="55" cy="68" rx="18" ry="10" fill="#FF7070" opacity="0.5"/>
+    <circle cx="42" cy="72" r="6" fill="#FF8080" opacity="0.7"/>
+    <circle cx="68" cy="55" r="5" fill="#FF8080" opacity="0.7"/>
+    <circle cx="90" cy="68" r="7" fill="#FF8080" opacity="0.7"/>
+    <circle cx="60" cy="115" r="4.5" fill="#0a0a0a"/>
+    <circle cx="80" cy="115" r="4.5" fill="#0a0a0a"/>
+    <path d="M63,127 Q70,133 77,127" stroke="#0a0a0a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="58" cy="145" rx="10" ry="4" fill="#EBE0D0"/>
+    <ellipse cx="82" cy="145" rx="10" ry="4" fill="#EBE0D0"/>
+    <text x="70" y="175" text-anchor="middle" font-family="system-ui" font-size="12" fill="#666">neutral</text>
+  </g>
+
+  <!-- Curious -->
+  <g id="curious" transform="translate(155,15)">
+    <rect x="50" y="95" width="40" height="50" rx="14" fill="#F5EDE0"/>
+    <ellipse cx="70" cy="82" rx="52" ry="38" fill="#FF4D4D"/>
+    <ellipse cx="55" cy="68" rx="18" ry="10" fill="#FF7070" opacity="0.5"/>
+    <circle cx="42" cy="72" r="6" fill="#FF8080" opacity="0.7"/>
+    <circle cx="68" cy="55" r="5" fill="#FF8080" opacity="0.7"/>
+    <circle cx="90" cy="68" r="7" fill="#FF8080" opacity="0.7"/>
+    <circle cx="60" cy="115" r="4.5" fill="#0a0a0a"/>
+    <circle cx="80" cy="113" r="5.5" fill="#0a0a0a"/>
+    <circle cx="70" cy="129" r="3.5" fill="none" stroke="#0a0a0a" stroke-width="2.5"/>
+    <ellipse cx="58" cy="145" rx="10" ry="4" fill="#EBE0D0"/>
+    <ellipse cx="82" cy="145" rx="10" ry="4" fill="#EBE0D0"/>
+    <text x="70" y="175" text-anchor="middle" font-family="system-ui" font-size="12" fill="#666">curious</text>
+  </g>
+
+  <!-- Processing -->
+  <g id="processing" transform="translate(305,15)">
+    <rect x="50" y="95" width="40" height="50" rx="14" fill="#F5EDE0"/>
+    <ellipse cx="70" cy="82" rx="52" ry="38" fill="#FF4D4D"/>
+    <ellipse cx="55" cy="68" rx="18" ry="10" fill="#FF7070" opacity="0.5"/>
+    <circle cx="42" cy="72" r="6" fill="#FF8080" opacity="0.7"/>
+    <circle cx="68" cy="55" r="5" fill="#FF8080" opacity="0.7"/>
+    <circle cx="90" cy="68" r="7" fill="#FF8080" opacity="0.7"/>
+    <line x1="54" y1="115" x2="66" y2="115" stroke="#0a0a0a" stroke-width="3" stroke-linecap="round"/>
+    <line x1="74" y1="115" x2="86" y2="115" stroke="#0a0a0a" stroke-width="3" stroke-linecap="round"/>
+    <path d="M60,128 Q65,124 70,128 Q75,132 80,128" stroke="#0a0a0a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="58" cy="145" rx="10" ry="4" fill="#EBE0D0"/>
+    <ellipse cx="82" cy="145" rx="10" ry="4" fill="#EBE0D0"/>
+    <text x="70" y="175" text-anchor="middle" font-family="system-ui" font-size="12" fill="#666">processing</text>
+  </g>
+
+  <!-- Proud -->
+  <g id="proud" transform="translate(455,15)">
+    <rect x="50" y="95" width="40" height="50" rx="14" fill="#F5EDE0"/>
+    <ellipse cx="70" cy="82" rx="52" ry="38" fill="#FF4D4D"/>
+    <ellipse cx="55" cy="68" rx="18" ry="10" fill="#FF7070" opacity="0.5"/>
+    <circle cx="42" cy="72" r="6" fill="#FF8080" opacity="0.7"/>
+    <circle cx="68" cy="55" r="5" fill="#FF8080" opacity="0.7"/>
+    <circle cx="90" cy="68" r="7" fill="#FF8080" opacity="0.7"/>
+    <path d="M55,114 Q60,110 65,114" stroke="#0a0a0a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M75,114 Q80,110 85,114" stroke="#0a0a0a" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <path d="M60,126 Q70,136 80,126" stroke="#0a0a0a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="58" cy="145" rx="10" ry="4" fill="#EBE0D0"/>
+    <ellipse cx="82" cy="145" rx="10" ry="4" fill="#EBE0D0"/>
+    <text x="70" y="175" text-anchor="middle" font-family="system-ui" font-size="12" fill="#666">proud</text>
+  </g>
+
+  <!-- Alert -->
+  <g id="alert" transform="translate(605,15)">
+    <rect x="50" y="95" width="40" height="50" rx="14" fill="#F5EDE0"/>
+    <ellipse cx="70" cy="82" rx="52" ry="38" fill="#FF4D4D"/>
+    <ellipse cx="55" cy="68" rx="18" ry="10" fill="#FF7070" opacity="0.5"/>
+    <circle cx="42" cy="72" r="6" fill="#FF8080" opacity="0.7"/>
+    <circle cx="68" cy="55" r="5" fill="#FF8080" opacity="0.7"/>
+    <circle cx="90" cy="68" r="7" fill="#FF8080" opacity="0.7"/>
+    <circle cx="60" cy="113" r="6" fill="white"/>
+    <circle cx="80" cy="113" r="6" fill="white"/>
+    <circle cx="61" cy="114" r="3.5" fill="#0a0a0a"/>
+    <circle cx="81" cy="114" r="3.5" fill="#0a0a0a"/>
+    <path d="M64,129 L70,124 L76,129" stroke="#0a0a0a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="58" cy="145" rx="10" ry="4" fill="#EBE0D0"/>
+    <ellipse cx="82" cy="145" rx="10" ry="4" fill="#EBE0D0"/>
+    <text x="70" y="175" text-anchor="middle" font-family="system-ui" font-size="12" fill="#666">alert</text>
+  </g>
+</svg>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 170">
+  <!--
+    Mogu — Canonical Reference
+    ==========================
+    Cap:Stem:Feet height ratio = 45:30:15 (remaining 10% overlap)
+    Cap width / Stem width = 2.6x
+    Eye spacing = Stem width × 50%
+    Mouth below eyes = Stem height × 24%
+
+    INVARIANTS (never change):
+      Stem fill:      #F5EDE0
+      Eyes fill:      #0a0a0a
+      Eye radius:     stem_width × 11% (≈4.5 at this scale)
+      Feet fill:      #EBE0D0
+      Cap highlight:  cap_color lightened 20%, opacity 0.5
+      Spot color:     cap_color lightened 25%, opacity 0.7
+
+    VARIABLES (change per concept):
+      Cap fill, Cap shape, Cap texture, Spot shapes, Expression
+  -->
+
+  <!-- Stem: rx=14 gives soft rounded corners -->
+  <rect x="50" y="95" width="40" height="50" rx="14" fill="#F5EDE0"/>
+
+  <!-- Cap: dominant dome, ~2.6x wider than stem -->
+  <ellipse cx="70" cy="82" rx="52" ry="38" fill="#FF4D4D"/>
+
+  <!-- Cap highlight: subtle polish, shifted upper-left -->
+  <ellipse cx="55" cy="68" rx="18" ry="10" fill="#FF7070" opacity="0.5"/>
+
+  <!-- Spots: 3 circles, varied size, scattered unevenly -->
+  <circle cx="42" cy="72" r="6" fill="#FF8080" opacity="0.7"/>
+  <circle cx="68" cy="55" r="5" fill="#FF8080" opacity="0.7"/>
+  <circle cx="90" cy="68" r="7" fill="#FF8080" opacity="0.7"/>
+
+  <!-- Eyes: solid black dots on stem, no highlights -->
+  <circle cx="60" cy="115" r="4.5" fill="#0a0a0a"/>
+  <circle cx="80" cy="115" r="4.5" fill="#0a0a0a"/>
+
+  <!-- Mouth: simple upward arc -->
+  <path d="M63,127 Q70,133 77,127" stroke="#0a0a0a" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  <!-- Feet: small ellipses for grounding -->
+  <ellipse cx="58" cy="145" rx="10" ry="4" fill="#EBE0D0"/>
+  <ellipse cx="82" cy="145" rx="10" ry="4" fill="#EBE0D0"/>
+</svg>
