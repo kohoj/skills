@@ -6,3 +6,4 @@ __pycache__/
 !package.json
 *.md.bak
 .DS_Store
+mogu-visual/test-output/
