@@ -30,61 +30,105 @@ the inline quick reference in Section 4 of this document is sufficient to draw a
 Parse the user's input and **enumerate every distinct concept** before doing anything else.
 This is the most critical step — concepts that aren't listed here will be invisible in the output.
 
-**1a. Concept inventory:** List every noun, mechanism, relationship, state, rule, and constraint
-mentioned in the input. Be exhaustive. A 500-word description might contain 15-30 concepts.
+**1a. Section-by-section extraction:** Walk through the input text section by section (not a
+single pass). For each paragraph or section, ask: "What concepts are introduced here that
+aren't already in my list?" Tag each concept with the source section for traceability.
 
-**1b. Concept categorization:** Group each concept into one of these types:
+**1b. Implicit concept scan:** After the explicit pass, scan for concepts the text implies
+but doesn't name directly: consistency boundaries, failure domains, trust zones, ownership
+boundaries, backpressure, retry behavior, ordering guarantees, staleness.
+
+**1c. Deduplication:** Group aliases that refer to the same concept. "Broker," "message broker,"
+and "coordination layer" might be one concept or three — resolve based on context.
+
+**1d. Assign concept IDs:** Give each deduplicated concept a stable ID (C01, C02, ...).
+These IDs track through the entire pipeline: extraction → categorization → mapping → code → rendered output.
+
+**1e. Concept categorization:** Classify each concept. The taxonomy has 12 types — use the
+most specific match, not the first match:
 
 | Type | What it is | Visual treatment |
 |------|-----------|-----------------|
-| **Entity** | A named thing with identity (Department, Broker, Mission) | → Mogu actor |
-| **Property** | An attribute of an entity (capability, comfort zone, status) | → Cap variation, label, or tooltip |
-| **Flow** | Something that moves between entities (message, request, item) | → Animated item |
-| **Relationship** | A structural link (parent-child, peer, reviewer) | → Connection line |
-| **State** | A lifecycle phase (proposed, active, blocked) | → Expression or cap color change |
-| **Rule** | A behavioral constraint (max 3 colors, WIP limit) | → Parameter or visible threshold |
-| **Layer/View** | A conceptual grouping (timeline horizon, architecture layer) | → View toggle or spatial zone |
+| **Entity** | A named thing with identity and behavior | → Mogu actor |
+| **Property** | An attribute of an entity (capability, comfort zone, role) | → Cap variation, badge, or onDraw glyph |
+| **Flow** | Something that moves between entities (message, request, data) | → Animated item (differentiated by shape + color) |
+| **Relationship** | A structural link (parent-child, peer, reviewer, depends-on) | → Connection line (style encodes type) |
+| **State** | A lifecycle phase an entity passes through | → Expression change + cap color shift |
+| **Event/Trigger** | Something that causes a transition ("on timeout", "when queue full") | → Key Moment with visible cause |
+| **Policy/Strategy** | A decision mechanism (routing strategy, decomposition policy, retry policy) | → Policy gate: visual decision point that branches items based on criteria |
+| **Constraint/Invariant** | A rule that must never be violated ("exactly one writer", "no cross-region") | → Boundary zone, guardrail line, or violation animation |
+| **Boundary/Domain** | A scope delimiter (trust boundary, failure domain, ownership zone) | → Translucent region drawn via onDraw, actors contained inside |
+| **Metric/Resource** | A measurable quantity (latency, capacity, utilization, budget) | → Stat display, bar gauge, or threshold line |
+| **Derived/Projection** | State computed from other state (cache, dashboard, index, view) | → Fainter/offset Mogu or ghost copy, visually subordinate to source |
+| **Layer/Tier** | A conceptual grouping or abstraction level | → Spatial zone or view toggle |
 
-**1c. Concept coverage check:** If the input has more than ~12 concepts, plan **multiple views**
-accessible via toggle parameters. A single static scene cannot show 20+ concepts without clutter.
-Split into views like: "Structure View", "Flow View", "Timeline View", "Detail View".
+**1f. Complexity assessment:** Count concepts. Then decide the scope:
 
-**1d. Clarifying questions** (only if needed):
+| Count | Strategy |
+|-------|----------|
+| 1-8 | Single scene, all concepts visible at once |
+| 9-15 | Single scene with 2-3 view toggles (each view ≤ 8 active concepts) |
+| 16-25 | Hierarchical drill-down: overview scene → subsystem details on click/toggle |
+| 25+ | Decompose input into 2-3 independent visualizations, each with its own scene |
+
+**1g. View design** (if multi-view): For each view, define:
+- Purpose: what question does this view answer?
+- Concepts shown (by ID): which concepts are active?
+- Anchor concepts: which concepts appear in ALL views as spatial landmarks?
+- Cross-view links: which flows/relationships connect this view to others?
+- Max concepts per view: **8** (hard cap — more than 8 active concepts causes clutter)
+
+**1h. Clarifying questions** (only if needed):
 - **Audience?** Developer, student, PM, general public?
 - **Which aspect?** The whole system or a specific mechanism?
 - **Depth?** High-level overview or implementation-level detail?
 
 ### Step 2: Write the Scene Script
 
-The scene script must include a **concept mapping table** — every concept from Step 1 must
-appear here with its visual representation. If a concept has no mapping, either add one or
-explicitly mark it as "deferred to [view name]".
+The scene script must include a **concept coverage manifest** — every concept ID from Step 1
+must appear with its visual encoding. This is the traceability contract.
 
 ```
 Scene: [title]
-Archetype: [pipeline | network | pool | state-machine | guard | tree | race | transform | broadcast | custom]
+Archetype: [archetype name or "custom: X + Y"]
 
-Concept Mapping:
-  - [concept name] → [visual element: actor/item/connection/expression/parameter/annotation/view]
-  - [concept name] → [visual element]
-  - [concept name] → deferred to [view name]
+Concept Coverage Manifest:
+  C01 [concept name] → [visual element] — [encoding: position/cap/shape/motion/color/size/zone/stat/gate]
+  C02 [concept name] → [visual element] — [encoding]
+  C03 [concept name] → deferred to view:[view name] — [encoding when active]
   ...
+  Coverage: N/N concepts mapped (must be 100%)
 
-Views (if >12 concepts):
-  - [view name]: [which concepts are shown] — [toggle parameter to activate]
-  ...
+Views (if multi-view):
+  - [view name] — purpose: [question it answers]
+    Active: C01, C03, C07, C12 (≤8)
+    Anchors: C01, C03
+    Toggle: param "view" value "[name]"
 
 Actors:
-  - [role] ([size], [cap color], [cap shape], [texture]) — represents [concept(s)]
-Items: [what flows, differentiated by shape/color per WorkItem type]
-Connections: [structural relationships between actors]
+  - [role] ([size], [cap color], [cap shape], [texture]) — represents C01, C04
+Items: [what flows, differentiated by shape/color — each type maps to a concept ID]
+Connections: [relationships, style maps to relationship type]
+Zones: [boundary/domain regions drawn via onDraw — each maps to a concept ID]
 Parameters:
-  - [name]: [type] [range] [default] — [what it affects / which concept it reveals]
+  - [name]: [type] [range] [default] — reveals/controls C07
+  - view: toggle [view names] — switches active concept set
 Key Moments:
-  - [trigger] → [visual effect] — demonstrates [concept]
-Annotations:
-  - [text label or callout] on [actor/item/zone] — explains [concept]
+  - [trigger] → [visual effect] — demonstrates C09 ([event/trigger concept])
+Stats:
+  - [stat name] — tracks C15 ([metric concept])
 ```
+
+**Rendering patterns for hard concept types** (not just actors and items):
+
+| Concept type | Rendering pattern |
+|-------------|-------------------|
+| Policy/Strategy | Policy gate Mogu: items enter, gate Mogu evaluates (processing expression), branches items to different paths based on criteria. Criteria shown as label on the gate. |
+| Constraint/Invariant | Colored boundary line around a zone. Items that violate the constraint flash red + bounce back. The constraint is a visible guardrail, not just text. |
+| Boundary/Domain | Translucent rectangular region (onDraw) containing the relevant actors. Label at top-left. Distinct color per domain. |
+| Metric/Resource | Horizontal gauge bar (onDraw) near the relevant actor. Fill level animates with state changes. Threshold marker shows limits. |
+| Derived/Projection | Ghost-Mogu: same shape as source but 60% opacity, offset slightly, connected by dotted line to source. Stale state shown as faded + lag animation. |
+| Source of Truth | Solid base line under the Mogu + bold label. Visual "rooted" feel vs. floating derived copies. |
 
 **Scene archetype selection** (see `references/scenes.md`):
 
@@ -106,15 +150,28 @@ is the contract — changes after code generation are expensive.
 
 ### Step 2.5: Concept Coverage Audit
 
-Before proceeding to Step 3, verify:
+Before proceeding to Step 3, run this checklist against the concept manifest:
 
-1. **Every concept from Step 1 has a mapping** in the scene script (either a visual element or deferred to a view)
-2. **No concept is represented only by absence** — if something matters, it must be visible
-3. **Differentiation is visual, not just textual** — if there are 4 types of WorkItem, they need 4 distinct shapes/colors, not just different labels
-4. **States have transitions** — if an entity has a lifecycle (proposed→active→blocked→completed), the visualization must show at least 2-3 states and the transition between them
-5. **Layers/groupings are spatially separated** — if the concept has layers (timeline horizons, architecture tiers), use distinct canvas zones or view toggles
+1. **100% coverage:** Every concept ID from Step 1 appears in the manifest. Count them.
+   If coverage < 100%, stop and fix the scene script. No exceptions.
+2. **No text-only escapes:** If a concept's encoding is just "label" or "annotation,"
+   reconsider — can it be a cap shape, item variation, zone, gauge, gate, or expression
+   instead? Text is a last resort. If text is truly the only option, add a `textOnlyReason`.
+3. **"Deferred" concepts must resolve:** Every concept deferred to a view must have that
+   view defined, with the concept listed as active in that view. Grep the manifest for
+   "deferred" and verify each has a matching view entry.
+4. **Visual differentiation:** If multiple concepts share the same type (e.g., 4 kinds of
+   WorkItem), each must have a distinct visual encoding (shape + color, not just label).
+5. **States have transitions:** If a concept has a lifecycle (proposed → active → blocked →
+   completed), the visualization must show ≥ 2 states and animate the transition.
+6. **Layers are spatial:** If the concept has architectural layers or tiers, they must be
+   visually separated as canvas zones, not just described in text.
+7. **Policies branch:** If a concept is a policy/strategy, the visualization must show
+   the decision point and at least 2 different outcomes.
+8. **Boundaries enclose:** If a concept is a boundary/domain, it must be drawn as a
+   visible region with actors inside, not just labeled.
 
-If coverage gaps are found, revise the scene script before generating.
+If any check fails, revise the scene script before generating.
 
 ### Step 3: Design the Cast
 
