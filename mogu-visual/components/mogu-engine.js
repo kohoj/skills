@@ -469,7 +469,8 @@
     this._annotations = this._annotations || [];
     this._annotations.push({
       id: id,
-      x: cfg.x || 0.5, y: cfg.y || 0.5,    // normalized
+      x: cfg.x !== undefined ? cfg.x : 0.5,
+      y: cfg.y !== undefined ? cfg.y : 0.5, // normalized
       text: cfg.text || '',
       color: cfg.color || '#888',
       fontSize: cfg.fontSize || 11,
@@ -547,8 +548,8 @@
     this._drawGauges(ctx,w,h,t);
     // 8. Annotations
     this._drawAnnotations(ctx,w,h);
-    // 9. Custom draw
-    if (this._drawFn) this._drawFn(ctx,w,h,t);
+    // 9. Custom draw (wrapped in save/restore to protect engine state)
+    if (this._drawFn) { ctx.save(); this._drawFn(ctx,w,h,t); ctx.restore(); }
     // 7. Stats
     this._renderStats();
     // 8. Title
@@ -686,6 +687,8 @@
     for (var i = 0; i < anns.length; i++) {
       var a = anns[i];
       var ax = a.x * w, ay = a.y * h;
+      ctx.font = a.fontSize + 'px system-ui, sans-serif';
+      ctx.textAlign = 'center';
       if (a.bg) {
         var m = ctx.measureText(a.text);
         ctx.fillStyle = a.bg;
@@ -693,8 +696,6 @@
         ctx.fill();
       }
       ctx.fillStyle = a.color;
-      ctx.font = a.fontSize + 'px system-ui, sans-serif';
-      ctx.textAlign = 'center';
       ctx.fillText(a.text, ax, ay);
     }
   };

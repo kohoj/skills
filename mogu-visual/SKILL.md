@@ -222,6 +222,8 @@ Use the **MoguScene engine** (`components/mogu-engine.js`) to keep generated HTM
 </head>
 <body>
 <canvas id="c"></canvas>
+<!-- Path assumes output is in a sibling directory to components/ (e.g., test-output/).
+     For standalone distribution, inline the engine or adjust the path. -->
 <script src="../components/mogu-engine.js"></script>
 <script>
 // --- Scene code starts here (target: 150-250 lines) ---
