@@ -389,6 +389,91 @@
   MoguScene.prototype.onDraw = function (fn) { this._drawFn = fn; };
   MoguScene.prototype.setStat = function (key, value) { this._stats[key] = value; };
 
+  // --- Zones (boundary/domain regions) ---
+
+  MoguScene.prototype.addZone = function (id, cfg) {
+    this._zones = this._zones || [];
+    this._zones.push({
+      id: id,
+      x: cfg.x || 0, y: cfg.y || 0,        // top-left, normalized 0-1
+      w: cfg.w || 0.3, h: cfg.h || 0.3,     // width/height, normalized 0-1
+      color: cfg.color || 'rgba(255,255,255,0.06)',
+      borderColor: cfg.borderColor || 'rgba(255,255,255,0.15)',
+      label: cfg.label || '',
+      labelColor: cfg.labelColor || '#666'
+    });
+  };
+
+  MoguScene.prototype.removeZone = function (id) {
+    this._zones = (this._zones||[]).filter(function(z){ return z.id !== id; });
+  };
+
+  // --- Gauges (metric/resource bars) ---
+
+  MoguScene.prototype.addGauge = function (id, cfg) {
+    this._gauges = this._gauges || [];
+    this._gauges.push({
+      id: id,
+      actorId: cfg.actorId,                  // attached to which actor
+      label: cfg.label || '',
+      value: cfg.value || 0,                 // 0-1
+      max: cfg.max || 1,
+      threshold: cfg.threshold,              // optional: 0-1, draws a threshold marker
+      color: cfg.color || '#52C77A',
+      warnColor: cfg.warnColor || '#FFB84D',
+      dangerColor: cfg.dangerColor || '#FF4D4D',
+      width: cfg.width || 60,
+      height: cfg.height || 8,
+      offsetY: cfg.offsetY || 0              // extra y offset below actor
+    });
+  };
+
+  MoguScene.prototype.setGauge = function (id, value) {
+    var gauges = this._gauges || [];
+    for (var i = 0; i < gauges.length; i++) {
+      if (gauges[i].id === id) { gauges[i].value = value; return; }
+    }
+  };
+
+  MoguScene.prototype.removeGauge = function (id) {
+    this._gauges = (this._gauges||[]).filter(function(g){ return g.id !== id; });
+  };
+
+  // --- Ghost actors (derived/projection copies) ---
+
+  MoguScene.prototype.addGhost = function (sourceActorId, ghostId, cfg) {
+    var src = this._actors[sourceActorId];
+    if (!src) return;
+    this.addActor(ghostId, {
+      label: cfg.label || src.label + ' (derived)',
+      x: cfg.x !== undefined ? cfg.x : src.x + 0.05,
+      y: cfg.y !== undefined ? cfg.y : src.y + 0.05,
+      size: cfg.size || Math.round(src.size * 0.75),
+      cap: { color: cfg.capColor || src.cap.color, shape: src.cap.shape, texture: src.cap.texture },
+      bouncePhase: (cfg.bouncePhase !== undefined ? cfg.bouncePhase : src.bouncePhase + 0.5)
+    });
+    this._ghosts = this._ghosts || {};
+    this._ghosts[ghostId] = { sourceId: sourceActorId, opacity: cfg.opacity || 0.5, staleOffset: cfg.staleOffset || 0 };
+  };
+
+  // --- Annotations (text callouts on canvas) ---
+
+  MoguScene.prototype.addAnnotation = function (id, cfg) {
+    this._annotations = this._annotations || [];
+    this._annotations.push({
+      id: id,
+      x: cfg.x || 0.5, y: cfg.y || 0.5,    // normalized
+      text: cfg.text || '',
+      color: cfg.color || '#888',
+      fontSize: cfg.fontSize || 11,
+      bg: cfg.bg || null                      // optional background color
+    });
+  };
+
+  MoguScene.prototype.removeAnnotation = function (id) {
+    this._annotations = (this._annotations||[]).filter(function(a){ return a.id !== id; });
+  };
+
   // --- Start / Stop ---
 
   MoguScene.prototype.start = function (keywords, targetColor) {
@@ -441,15 +526,21 @@
     ctx.fillStyle = this._bg; ctx.fillRect(0,0,w,h);
     // Ceremony override
     if (this._ceremony && t < 3.0) { this._drawCeremony(ctx,w,h,t); return; }
-    // 2. Connections
+    // 2. Zones (behind everything else)
+    this._drawZones(ctx,w,h);
+    // 3. Connections
     this._drawConnections(ctx,w,h);
-    // 3. Items
+    // 4. Items
     this._drawItems(ctx,w,h,t);
-    // 4. Actors
+    // 5. Actors (with ghost opacity)
     this._drawActors(ctx,w,h,t);
-    // 5. Labels
+    // 6. Labels
     this._drawLabels(ctx,w,h,t);
-    // 6. Custom draw
+    // 7. Gauges (on top of actors)
+    this._drawGauges(ctx,w,h,t);
+    // 8. Annotations
+    this._drawAnnotations(ctx,w,h);
+    // 9. Custom draw
     if (this._drawFn) this._drawFn(ctx,w,h,t);
     // 7. Stats
     this._renderStats();
@@ -505,16 +596,6 @@
     }
   };
 
-  // --- Actor rendering ---
-
-  MoguScene.prototype._drawActors = function (ctx, w, h, t) {
-    for (var i = 0; i < this._actorOrder.length; i++) {
-      var a = this._actors[this._actorOrder[i]]; if (!a) continue;
-      var bounce = idleBounce(t + a.bouncePhase, a.bouncePeriod, a.bounceAmplitude);
-      drawMogu(ctx, a.x*w, a.y*h + bounce, a.size, a.cap.color||'#FF4D4D', a.expression, a._capShapeFn, a._textureFn);
-    }
-  };
-
   // --- Label rendering ---
 
   MoguScene.prototype._drawLabels = function (ctx, w, h, t) {
@@ -525,6 +606,107 @@
       var bounce = idleBounce(t + a.bouncePhase, a.bouncePeriod, a.bounceAmplitude);
       var ly = a.y*h + a.size*0.35 + 12 + bounce;
       ctx.fillText(useShort ? a.label.substring(0,3)+(i+1) : a.label, a.x*w, ly);
+    }
+  };
+
+  // --- Zone rendering ---
+
+  MoguScene.prototype._drawZones = function (ctx, w, h) {
+    var zones = this._zones || [];
+    for (var i = 0; i < zones.length; i++) {
+      var z = zones[i];
+      var zx = z.x * w, zy = z.y * h, zw = z.w * w, zh = z.h * h;
+      // Fill
+      ctx.fillStyle = z.color;
+      ctx.fillRect(zx, zy, zw, zh);
+      // Border
+      ctx.strokeStyle = z.borderColor;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.strokeRect(zx, zy, zw, zh);
+      ctx.setLineDash([]);
+      // Label
+      if (z.label) {
+        ctx.fillStyle = z.labelColor;
+        ctx.font = '10px system-ui, sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(z.label, zx + 6, zy + 14);
+      }
+    }
+  };
+
+  // --- Gauge rendering ---
+
+  MoguScene.prototype._drawGauges = function (ctx, w, h, t) {
+    var gauges = this._gauges || [];
+    for (var i = 0; i < gauges.length; i++) {
+      var g = gauges[i], a = this._actors[g.actorId];
+      if (!a) continue;
+      var bounce = idleBounce(t + a.bouncePhase, a.bouncePeriod, a.bounceAmplitude);
+      var gx = a.x * w - g.width / 2;
+      var gy = a.y * h + a.size * 0.35 + 18 + bounce + g.offsetY;
+      var ratio = Math.min(g.value / g.max, 1);
+      // Background
+      ctx.fillStyle = '#1a1a1a';
+      roundRect(ctx, gx, gy, g.width, g.height, 3);
+      ctx.fill();
+      ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke();
+      // Fill
+      if (ratio > 0) {
+        var fillColor = ratio < 0.5 ? g.color : ratio < 0.85 ? g.warnColor : g.dangerColor;
+        roundRect(ctx, gx + 1, gy + 1, (g.width - 2) * ratio, g.height - 2, 2);
+        ctx.fillStyle = fillColor;
+        ctx.fill();
+      }
+      // Threshold marker
+      if (g.threshold !== undefined) {
+        var tx = gx + g.width * g.threshold;
+        ctx.strokeStyle = '#FF4D4D'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(tx, gy - 2); ctx.lineTo(tx, gy + g.height + 2); ctx.stroke();
+      }
+      // Label
+      if (g.label) {
+        ctx.fillStyle = '#555'; ctx.font = '9px system-ui, sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText(g.label + ': ' + Math.round(g.value) + '/' + Math.round(g.max), a.x * w, gy + g.height + 10);
+      }
+    }
+  };
+
+  // --- Annotation rendering ---
+
+  MoguScene.prototype._drawAnnotations = function (ctx, w, h) {
+    var anns = this._annotations || [];
+    for (var i = 0; i < anns.length; i++) {
+      var a = anns[i];
+      var ax = a.x * w, ay = a.y * h;
+      if (a.bg) {
+        var m = ctx.measureText(a.text);
+        ctx.fillStyle = a.bg;
+        roundRect(ctx, ax - m.width / 2 - 4, ay - a.fontSize + 2, m.width + 8, a.fontSize + 6, 3);
+        ctx.fill();
+      }
+      ctx.fillStyle = a.color;
+      ctx.font = a.fontSize + 'px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(a.text, ax, ay);
+    }
+  };
+
+  // --- Ghost actor opacity override ---
+
+  MoguScene.prototype._drawActors = function (ctx, w, h, t) {
+    var ghosts = this._ghosts || {};
+    for (var i = 0; i < this._actorOrder.length; i++) {
+      var a = this._actors[this._actorOrder[i]]; if (!a) continue;
+      var bounce = idleBounce(t + a.bouncePhase, a.bouncePeriod, a.bounceAmplitude);
+      var ghost = ghosts[a.id];
+      if (ghost) {
+        ctx.globalAlpha = ghost.opacity;
+        // Stale lag: offset the bounce slightly
+        bounce = idleBounce(t + a.bouncePhase - ghost.staleOffset, a.bouncePeriod, a.bounceAmplitude);
+      }
+      drawMogu(ctx, a.x*w, a.y*h + bounce, a.size, a.cap.color||'#FF4D4D', a.expression, a._capShapeFn, a._textureFn);
+      if (ghost) ctx.globalAlpha = 1;
     }
   };
 

@@ -260,6 +260,13 @@ scene.start(['keyword1', 'keyword2'], '#targetCapColor');
 | `addParam(config)` | Add control. Type: slider/toggle/stepper |
 | `param(id)` | Get current parameter value |
 | `spawnItem(config)` | Spawn flowing item. Config: from, to, color, speed, arc, onArrive |
+| `addZone(id, config)` | Boundary/domain region. Config: x, y, w, h (0-1), color, borderColor, label |
+| `removeZone(id)` | Remove a zone |
+| `addGauge(id, config)` | Metric bar attached to an actor. Config: actorId, label, value, max, threshold, color/warnColor/dangerColor |
+| `setGauge(id, value)` | Update a gauge's current value |
+| `addGhost(srcActorId, ghostId, config)` | Derived/projection copy of an actor. Config: x, y, opacity, staleOffset |
+| `addAnnotation(id, config)` | Text callout on canvas. Config: x, y (0-1), text, color, fontSize, bg |
+| `removeAnnotation(id)` | Remove an annotation |
 | `onUpdate(fn)` | Register per-frame update: fn(dt, time) |
 | `onDraw(fn)` | Register custom draw: fn(ctx, w, h, time) |
 | `setStat(key, value)` | Show stat in bottom-left |
