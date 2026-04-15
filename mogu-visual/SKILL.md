@@ -60,7 +60,14 @@ most specific match, not the first match:
 | **Boundary/Domain** | A scope delimiter (trust boundary, failure domain, ownership zone) | → Translucent region drawn via onDraw, actors contained inside |
 | **Metric/Resource** | A measurable quantity (latency, capacity, utilization, budget) | → Stat display, bar gauge, or threshold line |
 | **Derived/Projection** | State computed from other state (cache, dashboard, index, view) | → Fainter/offset Mogu or ghost copy, visually subordinate to source |
+| **Source of Truth** | The authoritative canonical state (ledger, config, primary DB) | → Grounded Mogu with solid base line, bold label, "rooted" feel |
 | **Layer/Tier** | A conceptual grouping or abstraction level | → Spatial zone or view toggle |
+
+**Multi-type concepts:** A concept can have a primary type and secondary tags. A database
+is primarily an Entity but also a Source of Truth. A queue is an Entity but also has
+Metric/Resource (depth) and Constraint (capacity limit). Tag the primary type in the
+categorization, add secondary tags in parentheses: `C07 MessageQueue [Entity (Metric, Constraint)]`.
+The primary type determines the main visual element; secondary tags add overlays (gauge, boundary, badge).
 
 **1f. Complexity assessment:** Count concepts. Then decide the scope:
 
@@ -71,12 +78,23 @@ most specific match, not the first match:
 | 16-25 | Hierarchical drill-down: overview scene → subsystem details on click/toggle |
 | 25+ | Decompose input into 2-3 independent visualizations, each with its own scene |
 
-**1g. View design** (if multi-view): For each view, define:
-- Purpose: what question does this view answer?
-- Concepts shown (by ID): which concepts are active?
-- Anchor concepts: which concepts appear in ALL views as spatial landmarks?
-- Cross-view links: which flows/relationships connect this view to others?
-- Max concepts per view: **8** (hard cap — more than 8 active concepts causes clutter)
+**1g. View design** (if multi-view):
+
+First, **group concepts using one of these strategies** (pick the one that best fits the input):
+
+| Strategy | How to group | Best for |
+|----------|-------------|----------|
+| **By subsystem** | Each view = one subsystem or component cluster | Microservices, modular architectures |
+| **By lifecycle** | Each view = one phase (setup → running → failure → recovery) | Stateful protocols, workflow engines |
+| **By abstraction** | Each view = one layer (infra → platform → application → user) | Layered architectures |
+| **By data path** | Each view = one data flow from source to sink | ETL, event-driven systems |
+| **By question** | Each view answers one user question ("How does X work?" "What happens when Y fails?") | Complex systems with diverse audiences |
+
+Then for each view, define:
+- **Purpose:** what question does this view answer?
+- **Concepts shown (by ID):** which concepts are active? Target ≤ 8 per view (soft cap — allow 9-10 if concepts are spatially grouped and don't clutter; never exceed 12)
+- **Anchor concepts:** which concepts appear in ALL views as spatial landmarks (same position)?
+- **Cross-view links:** which flows/relationships connect this view to others?
 
 **1h. Clarifying questions** (only if needed):
 - **Audience?** Developer, student, PM, general public?
