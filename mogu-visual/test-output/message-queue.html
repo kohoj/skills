@@ -234,7 +234,10 @@ function getLayout(w, h) {
   var brokerX = cx, brokerY = cy - 10;
   var consumers = [];
   var count = state.consumerCount;
-  var spacing = Math.min(h * 0.2, 100);
+  var spacing = Math.min(h * 0.16, 90);
+  var totalSpan = (count - 1) * spacing;
+  var maxSpan = h * 0.7;
+  if (totalSpan > maxSpan) spacing = maxSpan / Math.max(count - 1, 1);
   var startY = brokerY - ((count - 1) / 2) * spacing;
   for (var i = 0; i < count; i++) {
     consumers.push({ x: w * 0.85, y: startY + i * spacing });
@@ -521,24 +524,28 @@ function draw(ctx, w, h) {
     ctx.fill();
   }
 
-  // Queue label
-  ctx.fillStyle = '#666';
-  ctx.font = '10px system-ui, sans-serif';
+  // Queue count (inside the bar)
+  ctx.fillStyle = fillRatio > 0.5 ? '#fff' : '#999';
+  ctx.font = '9px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(state.queue.length + '/' + state.queueCapacity, lo.brokerX, queueBarY + queueBarH + 12);
+  ctx.textBaseline = 'middle';
+  ctx.fillText(state.queue.length + '/' + state.queueCapacity, lo.brokerX, queueBarY + queueBarH / 2);
+  ctx.textBaseline = 'alphabetic';
 
-  // Draw stacked message pills inside queue area
-  var pillW = 8, pillH = 5, pillCols = 7;
+  // Draw stacked message pills inside queue bar (not above it)
+  var pillW = 6, pillH = 4, pillCols = 8;
+  var maxVisiblePills = pillCols * 2; // max 2 rows, rest just shown by the fill bar
+  var visibleCount = Math.min(state.queue.length, maxVisiblePills);
   var pillStartX = lo.brokerX - (pillCols * (pillW + 2)) / 2;
-  var pillStartY = queueBarY - 8;
-  for (var i = 0; i < state.queue.length; i++) {
+  var pillStartY = queueBarY - 10;
+  for (var i = 0; i < visibleCount; i++) {
     var col = i % pillCols;
     var row = Math.floor(i / pillCols);
     var px = pillStartX + col * (pillW + 2);
     var py = pillStartY - row * (pillH + 2);
     ctx.fillStyle = state.queue[i].color;
-    ctx.globalAlpha = 0.8;
-    roundRect(ctx, px, py, pillW, pillH, 2);
+    ctx.globalAlpha = 0.7;
+    roundRect(ctx, px, py, pillW, pillH, 1.5);
     ctx.fill();
   }
   ctx.globalAlpha = 1.0;
@@ -594,14 +601,14 @@ function draw(ctx, w, h) {
     drawMogu(ctx, c.x, c.y + cBounce, 55, '#52C77A', cExpr);
   }
 
-  // Labels
+  // Labels — positioned below each Mogu with enough clearance
   ctx.fillStyle = '#555';
   ctx.font = '11px system-ui, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('Producer', lo.producerX, lo.producerY + 48);
-  ctx.fillText('Broker', lo.brokerX, lo.brokerY + 80);
+  ctx.fillText('Producer', lo.producerX, lo.producerY + 50);
+  ctx.fillText('Broker', lo.brokerX, queueBarY + queueBarH + 16);
   for (var i = 0; i < lo.consumers.length; i++) {
-    ctx.fillText('Consumer ' + (i + 1), lo.consumers[i].x, lo.consumers[i].y + 42);
+    ctx.fillText('C' + (i + 1), lo.consumers[i].x, lo.consumers[i].y + 42);
   }
 
   // Stats overlay
