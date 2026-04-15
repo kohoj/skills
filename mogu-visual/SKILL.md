@@ -262,7 +262,7 @@ scene.start(['keyword1', 'keyword2'], '#targetCapColor');
 | `spawnItem(config)` | Spawn flowing item. Config: from, to, color, speed, arc, onArrive |
 | `addZone(id, config)` | Boundary/domain region. Config: x, y, w, h (0-1), color, borderColor, label |
 | `removeZone(id)` | Remove a zone |
-| `addGauge(id, config)` | Metric bar attached to an actor. Config: actorId, label, value, max, threshold, color/warnColor/dangerColor |
+| `addGauge(id, config)` | Metric bar attached to an actor. Config: actorId, label, value, max, threshold (same unit as value/max, e.g. 80 if max=100), color/warnColor/dangerColor |
 | `setGauge(id, value)` | Update a gauge's current value |
 | `addGhost(srcActorId, ghostId, config)` | Derived/projection copy of an actor. Config: x, y, opacity, staleOffset |
 | `addAnnotation(id, config)` | Text callout on canvas. Config: x, y (0-1), text, color, fontSize, bg |

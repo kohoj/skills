@@ -179,12 +179,15 @@
     return typeof cap.texture === 'function' ? cap.texture : (capTextures[cap.texture] || null);
   }
 
-  function drawMogu(ctx, x, y, size, capColor, expression, capShapeFn, textureFn) {
+  // baseAlpha: optional 0-1 multiplier for ghost/derived rendering
+  function drawMogu(ctx, x, y, size, capColor, expression, capShapeFn, textureFn, baseAlpha) {
     expression = expression || 'neutral';
+    var a = baseAlpha !== undefined ? baseAlpha : 1;
     var s = size/170, ox = x-70*s, oy = y-85*s;
     ctx.save(); ctx.translate(ox, oy);
     var hl = lightenColor(capColor, 0.2), sp = lightenColor(capColor, 0.25);
     // Feet
+    ctx.globalAlpha = a;
     ctx.fillStyle='#EBE0D0';
     ctx.beginPath(); ctx.ellipse(58*s,145*s,10*s,4*s,0,0,Math.PI*2); ctx.fill();
     ctx.beginPath(); ctx.ellipse(82*s,145*s,10*s,4*s,0,0,Math.PI*2); ctx.fill();
@@ -194,10 +197,13 @@
     if (capShapeFn) { capShapeFn(ctx,70*s,82*s,52*s,38*s); ctx.fillStyle=capColor; ctx.fill(); }
     else { ctx.fillStyle=capColor; ctx.beginPath(); ctx.ellipse(70*s,82*s,52*s,38*s,0,0,Math.PI*2); ctx.fill(); }
     // Highlight
-    ctx.globalAlpha=0.5; ctx.fillStyle=hl; ctx.beginPath(); ctx.ellipse(55*s,68*s,18*s,10*s,0,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1;
+    ctx.globalAlpha=0.5*a; ctx.fillStyle=hl; ctx.beginPath(); ctx.ellipse(55*s,68*s,18*s,10*s,0,0,Math.PI*2); ctx.fill();
     // Texture
+    ctx.globalAlpha=a;
     if (textureFn) { textureFn(ctx,70*s,82*s,52*s,38*s,sp); }
-    else { ctx.globalAlpha=0.7; ctx.fillStyle=sp; ctx.beginPath(); ctx.arc(42*s,72*s,6*s,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(68*s,55*s,5*s,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(90*s,68*s,7*s,0,Math.PI*2); ctx.fill(); ctx.globalAlpha=1; }
+    else { ctx.globalAlpha=0.7*a; ctx.fillStyle=sp; ctx.beginPath(); ctx.arc(42*s,72*s,6*s,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(68*s,55*s,5*s,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(90*s,68*s,7*s,0,Math.PI*2); ctx.fill(); }
+    // Expression
+    ctx.globalAlpha=a;
     drawExpression(ctx, expression, s);
     ctx.restore();
   }
@@ -418,7 +424,7 @@
       label: cfg.label || '',
       value: cfg.value || 0,                 // 0-1
       max: cfg.max || 1,
-      threshold: cfg.threshold,              // optional: 0-1, draws a threshold marker
+      threshold: cfg.threshold,              // optional: same unit as value/max (e.g., 80 if max=100)
       color: cfg.color || '#52C77A',
       warnColor: cfg.warnColor || '#FFB84D',
       dangerColor: cfg.dangerColor || '#FF4D4D',
@@ -660,7 +666,7 @@
       }
       // Threshold marker
       if (g.threshold !== undefined) {
-        var tx = gx + g.width * g.threshold;
+        var tx = gx + g.width * (g.threshold / g.max);
         ctx.strokeStyle = '#FF4D4D'; ctx.lineWidth = 1.5;
         ctx.beginPath(); ctx.moveTo(tx, gy - 2); ctx.lineTo(tx, gy + g.height + 2); ctx.stroke();
       }
@@ -700,13 +706,20 @@
       var a = this._actors[this._actorOrder[i]]; if (!a) continue;
       var bounce = idleBounce(t + a.bouncePhase, a.bouncePeriod, a.bounceAmplitude);
       var ghost = ghosts[a.id];
+      var alpha = 1;
       if (ghost) {
-        ctx.globalAlpha = ghost.opacity;
-        // Stale lag: offset the bounce slightly
+        alpha = ghost.opacity;
         bounce = idleBounce(t + a.bouncePhase - ghost.staleOffset, a.bouncePeriod, a.bounceAmplitude);
+        // Dotted line from ghost to source
+        var src = this._actors[ghost.sourceId];
+        if (src) {
+          var srcBounce = idleBounce(t + src.bouncePhase, src.bouncePeriod, src.bounceAmplitude);
+          ctx.strokeStyle = 'rgba(128,128,128,' + (alpha * 0.6) + ')'; ctx.lineWidth = 1; ctx.setLineDash([2, 4]);
+          ctx.beginPath(); ctx.moveTo(a.x*w, a.y*h+bounce); ctx.lineTo(src.x*w, src.y*h+srcBounce); ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
-      drawMogu(ctx, a.x*w, a.y*h + bounce, a.size, a.cap.color||'#FF4D4D', a.expression, a._capShapeFn, a._textureFn);
-      if (ghost) ctx.globalAlpha = 1;
+      drawMogu(ctx, a.x*w, a.y*h + bounce, a.size, a.cap.color||'#FF4D4D', a.expression, a._capShapeFn, a._textureFn, alpha);
     }
   };
 
