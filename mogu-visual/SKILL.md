@@ -25,16 +25,68 @@ the inline quick reference in Section 4 of this document is sufficient to draw a
 
 ## Workflow
 
-### Step 1: Understand the Concept
+### Step 1: Extract Concepts
 
-Parse the user's technical description. If the request is ambiguous, ask 1-2 clarifying
-questions before proceeding:
+Parse the user's input and **enumerate every distinct concept** before doing anything else.
+This is the most critical step — concepts that aren't listed here will be invisible in the output.
 
+**1a. Concept inventory:** List every noun, mechanism, relationship, state, rule, and constraint
+mentioned in the input. Be exhaustive. A 500-word description might contain 15-30 concepts.
+
+**1b. Concept categorization:** Group each concept into one of these types:
+
+| Type | What it is | Visual treatment |
+|------|-----------|-----------------|
+| **Entity** | A named thing with identity (Department, Broker, Mission) | → Mogu actor |
+| **Property** | An attribute of an entity (capability, comfort zone, status) | → Cap variation, label, or tooltip |
+| **Flow** | Something that moves between entities (message, request, item) | → Animated item |
+| **Relationship** | A structural link (parent-child, peer, reviewer) | → Connection line |
+| **State** | A lifecycle phase (proposed, active, blocked) | → Expression or cap color change |
+| **Rule** | A behavioral constraint (max 3 colors, WIP limit) | → Parameter or visible threshold |
+| **Layer/View** | A conceptual grouping (timeline horizon, architecture layer) | → View toggle or spatial zone |
+
+**1c. Concept coverage check:** If the input has more than ~12 concepts, plan **multiple views**
+accessible via toggle parameters. A single static scene cannot show 20+ concepts without clutter.
+Split into views like: "Structure View", "Flow View", "Timeline View", "Detail View".
+
+**1d. Clarifying questions** (only if needed):
 - **Audience?** Developer, student, PM, general public?
-- **Which aspect?** The whole system or a specific mechanism (e.g., "just the rebalancing part")?
+- **Which aspect?** The whole system or a specific mechanism?
 - **Depth?** High-level overview or implementation-level detail?
 
-Identify which scene archetype best fits the concept (see `references/scenes.md`):
+### Step 2: Write the Scene Script
+
+The scene script must include a **concept mapping table** — every concept from Step 1 must
+appear here with its visual representation. If a concept has no mapping, either add one or
+explicitly mark it as "deferred to [view name]".
+
+```
+Scene: [title]
+Archetype: [pipeline | network | pool | state-machine | guard | tree | race | transform | broadcast | custom]
+
+Concept Mapping:
+  - [concept name] → [visual element: actor/item/connection/expression/parameter/annotation/view]
+  - [concept name] → [visual element]
+  - [concept name] → deferred to [view name]
+  ...
+
+Views (if >12 concepts):
+  - [view name]: [which concepts are shown] — [toggle parameter to activate]
+  ...
+
+Actors:
+  - [role] ([size], [cap color], [cap shape], [texture]) — represents [concept(s)]
+Items: [what flows, differentiated by shape/color per WorkItem type]
+Connections: [structural relationships between actors]
+Parameters:
+  - [name]: [type] [range] [default] — [what it affects / which concept it reveals]
+Key Moments:
+  - [trigger] → [visual effect] — demonstrates [concept]
+Annotations:
+  - [text label or callout] on [actor/item/zone] — explains [concept]
+```
+
+**Scene archetype selection** (see `references/scenes.md`):
 
 | # | Archetype | When to use |
 |---|-----------|-------------|
@@ -49,24 +101,20 @@ Identify which scene archetype best fits the concept (see `references/scenes.md`
 | 9 | **Broadcast** | One-to-many fan-out, pub/sub |
 | -- | **Custom** | Combine archetypes or invent a new one |
 
-### Step 2: Write the Scene Script
-
-Produce a structured scene script using this template:
-
-```
-Scene: [title]
-Archetype: [pipeline | network | pool | state-machine | guard | tree | race | transform | broadcast | custom]
-Actors:
-  - [role] ([size: small|medium|large], [cap color], [cap shape], [texture])
-Items: [what flows between actors]
-Parameters:
-  - [name]: [slider|toggle|stepper] [range] [default] — [what it affects]
-Key Moments:
-  - [trigger] → [visual effect]
-```
-
 Present the scene script to the user for confirmation before generating code. This
-is the contract -- changes after code generation are expensive.
+is the contract — changes after code generation are expensive.
+
+### Step 2.5: Concept Coverage Audit
+
+Before proceeding to Step 3, verify:
+
+1. **Every concept from Step 1 has a mapping** in the scene script (either a visual element or deferred to a view)
+2. **No concept is represented only by absence** — if something matters, it must be visible
+3. **Differentiation is visual, not just textual** — if there are 4 types of WorkItem, they need 4 distinct shapes/colors, not just different labels
+4. **States have transitions** — if an entity has a lifecycle (proposed→active→blocked→completed), the visualization must show at least 2-3 states and the transition between them
+5. **Layers/groupings are spatially separated** — if the concept has layers (timeline horizons, architecture tiers), use distinct canvas zones or view toggles
+
+If coverage gaps are found, revise the scene script before generating.
 
 ### Step 3: Design the Cast
 
@@ -154,6 +202,7 @@ Check every item before delivering. If any row fails, fix it before handing off.
 
 | Check | Failure | Fix |
 |-------|---------|-----|
+| Concept coverage | Input concepts missing from visualization | Revisit concept mapping, add actors/items/views/annotations |
 | Character consistency | Proportions wrong, missing highlight/feet | Compare to canonical SVG in Section 4 |
 | Interactivity works | Controls don't affect animation | Bind params to game loop via state object |
 | Animation smoothness | Stuttering | Use `requestAnimationFrame`, not `setInterval` |
