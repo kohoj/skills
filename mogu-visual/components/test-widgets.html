@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mogu Widgets Test</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #111; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    #controls {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #1a1a1a; padding: 16px 24px; border-radius: 12px;
+      border: 1px solid #333; z-index: 10;
+    }
+    #label {
+      position: fixed; top: 24px; left: 50%; transform: translateX(-50%);
+      font-family: system-ui, sans-serif; font-size: 14px; color: #666;
+      letter-spacing: 0.05em; text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <div id="label">Mogu Widgets Test</div>
+  <canvas id="c"></canvas>
+  <div id="controls"></div>
+
+  <script src="widgets.js"></script>
+  <script>
+    // --- Test: 5 Mogus in a row, each a different color and expression ---
+
+    var canvas = document.getElementById('c');
+    var controls = document.getElementById('controls');
+
+    var mogus = [
+      { color: '#FF4D4D', expression: 'neutral',    label: 'Neutral' },
+      { color: '#4DA6FF', expression: 'curious',    label: 'Curious' },
+      { color: '#8B5CF6', expression: 'processing', label: 'Processing' },
+      { color: '#F59E0B', expression: 'proud',      label: 'Proud' },
+      { color: '#10B981', expression: 'alert',      label: 'Alert' },
+    ];
+
+    var moguSize = 120;
+    var elapsed = 0;
+    var bouncing = true;
+
+    // UI Controls
+    createSlider(controls, 'Size', 40, 250, moguSize, 1, function (v) {
+      moguSize = v;
+    });
+
+    createToggle(controls, 'Bounce', bouncing, function (v) {
+      bouncing = v;
+    });
+
+    // Game loop
+    var loop = createGameLoop(canvas, update, draw);
+
+    function update(dt) {
+      elapsed += dt;
+    }
+
+    function draw(ctx, w, h) {
+      // Center the row vertically, distribute evenly horizontally
+      var count = mogus.length;
+      var spacing = w / (count + 1);
+      var baseY = h * 0.45;
+
+      for (var i = 0; i < count; i++) {
+        var m = mogus[i];
+        var mx = spacing * (i + 1);
+
+        // Each Mogu gets a slight phase offset so they don't bounce in unison
+        var bounce = bouncing ? idleBounce(elapsed + i * 0.5, 2.5, 4) : 0;
+        var my = baseY + bounce;
+
+        drawMogu(ctx, mx, my, moguSize, m.color, m.expression);
+
+        // Draw label below
+        ctx.fillStyle = '#666';
+        ctx.font = '12px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(m.label, mx, my + moguSize * 0.55);
+      }
+    }
+  </script>
+</body>
+</html>
