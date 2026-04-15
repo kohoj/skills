@@ -89,17 +89,17 @@
   var capTextures = {
     spots: null, // default spots handled by drawMogu
     stripes: function(ctx,cx,cy,rx,ry,sc,ba) {
-      ba=ba||1; ctx.globalAlpha=0.5*ba; ctx.strokeStyle=sc; ctx.lineWidth=2;
+      ba=ba!==undefined?ba:1; ctx.globalAlpha=0.5*ba; ctx.strokeStyle=sc; ctx.lineWidth=2;
       for(var i=0;i<5;i++){var x=((i-2)/2)*rx*0.6; ctx.beginPath(); ctx.moveTo(cx+x,cy-ry*0.6); ctx.lineTo(cx+x,cy+ry*0.4); ctx.stroke();}
       ctx.globalAlpha=1;
     },
     hex: function(ctx,cx,cy,rx,ry,sc,ba) {
-      ba=ba||1; ctx.globalAlpha=0.4*ba; ctx.strokeStyle=sc; ctx.lineWidth=1.2; var hR=rx*0.12;
+      ba=ba!==undefined?ba:1; ctx.globalAlpha=0.4*ba; ctx.strokeStyle=sc; ctx.lineWidth=1.2; var hR=rx*0.12;
       for(var r=0;r<3;r++) for(var c=0;c<4;c++){var hx=cx+(c-2+0.5+(r%2)*0.5)*hR*1.8,hy=cy+(r-1)*hR*1.5; ctx.beginPath(); for(var s=0;s<=6;s++){var a=(s/6)*Math.PI*2-Math.PI/6; if(s===0)ctx.moveTo(hx+Math.cos(a)*hR,hy+Math.sin(a)*hR); else ctx.lineTo(hx+Math.cos(a)*hR,hy+Math.sin(a)*hR);} ctx.closePath(); ctx.stroke();}
       ctx.globalAlpha=1;
     },
     circuit: function(ctx,cx,cy,rx,ry,sc,ba) {
-      ba=ba||1; ctx.globalAlpha=0.45*ba; ctx.strokeStyle=sc; ctx.lineWidth=1.5;
+      ba=ba!==undefined?ba:1; ctx.globalAlpha=0.45*ba; ctx.strokeStyle=sc; ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.moveTo(cx-rx*0.5,cy); ctx.lineTo(cx-rx*0.1,cy); ctx.lineTo(cx-rx*0.1,cy-ry*0.4); ctx.lineTo(cx+rx*0.2,cy-ry*0.4); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(cx,cy+ry*0.2); ctx.lineTo(cx+rx*0.3,cy+ry*0.2); ctx.lineTo(cx+rx*0.3,cy-ry*0.1); ctx.stroke();
       ctx.fillStyle=sc; var j=[{x:cx-rx*0.1,y:cy},{x:cx+rx*0.2,y:cy-ry*0.4},{x:cx+rx*0.3,y:cy-ry*0.1}];
@@ -107,12 +107,12 @@
       ctx.globalAlpha=1;
     },
     swirl: function(ctx,cx,cy,rx,ry,sc,ba) {
-      ba=ba||1; ctx.globalAlpha=0.4*ba; ctx.strokeStyle=sc; ctx.lineWidth=2; ctx.beginPath();
+      ba=ba!==undefined?ba:1; ctx.globalAlpha=0.4*ba; ctx.strokeStyle=sc; ctx.lineWidth=2; ctx.beginPath();
       for(var i=0;i<=50;i++){var t=i/50,a=t*Math.PI*3,rad=t*rx*0.5; if(i===0)ctx.moveTo(cx+Math.cos(a)*rad,cy+Math.sin(a)*rad*(ry/rx)); else ctx.lineTo(cx+Math.cos(a)*rad,cy+Math.sin(a)*rad*(ry/rx));}
       ctx.stroke(); ctx.globalAlpha=1;
     },
     constellation: function(ctx,cx,cy,rx,ry,sc,ba) {
-      ba=ba||1; var n=[{x:cx-rx*0.4,y:cy-ry*0.3},{x:cx+rx*0.1,y:cy-ry*0.5},{x:cx+rx*0.4,y:cy-ry*0.2},{x:cx-rx*0.2,y:cy+ry*0.1},{x:cx+rx*0.25,y:cy+ry*0.2}];
+      ba=ba!==undefined?ba:1; var n=[{x:cx-rx*0.4,y:cy-ry*0.3},{x:cx+rx*0.1,y:cy-ry*0.5},{x:cx+rx*0.4,y:cy-ry*0.2},{x:cx-rx*0.2,y:cy+ry*0.1},{x:cx+rx*0.25,y:cy+ry*0.2}];
       ctx.globalAlpha=0.5*ba; ctx.strokeStyle=sc; ctx.lineWidth=1;
       for(var i=0;i<n.length-1;i++){ctx.beginPath(); ctx.moveTo(n[i].x,n[i].y); ctx.lineTo(n[i+1].x,n[i+1].y); ctx.stroke();}
       ctx.beginPath(); ctx.moveTo(n[0].x,n[0].y); ctx.lineTo(n[3].x,n[3].y); ctx.stroke();
@@ -121,12 +121,12 @@
       ctx.globalAlpha=1;
     },
     scales: function(ctx,cx,cy,rx,ry,sc,ba) {
-      ba=ba||1; ctx.globalAlpha=0.4*ba; ctx.strokeStyle=sc; ctx.lineWidth=1.5;
+      ba=ba!==undefined?ba:1; ctx.globalAlpha=0.4*ba; ctx.strokeStyle=sc; ctx.lineWidth=1.5;
       for(var r=0;r<3;r++) for(var c=0;c<4;c++){var sx=cx+(c-2+0.5)*rx*0.28,sy=cy+(r-1)*ry*0.35; ctx.beginPath(); ctx.arc(sx,sy,rx*0.12,0,Math.PI,true); ctx.stroke();}
       ctx.globalAlpha=1;
     },
     lightning: function(ctx,cx,cy,rx,ry,sc,ba) {
-      ba=ba||1; ctx.globalAlpha=0.5*ba; ctx.strokeStyle=sc; ctx.lineWidth=1.5; ctx.lineCap='round';
+      ba=ba!==undefined?ba:1; ctx.globalAlpha=0.5*ba; ctx.strokeStyle=sc; ctx.lineWidth=1.5; ctx.lineCap='round';
       for(var b=0;b<3;b++){var bx=cx+(b-1)*rx*0.35,by=cy-ry*0.5; ctx.beginPath(); ctx.moveTo(bx,by);
         for(var s=1;s<=4;s++) ctx.lineTo(bx+((s%2===0?-1:1)*rx*0.12),by+(ry*0.9/4)*s);
         ctx.stroke();}

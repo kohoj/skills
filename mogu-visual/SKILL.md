@@ -416,8 +416,10 @@ Texture = surface pattern mapped to concept characteristics.
 | **Scales** | Overlapping arcs | Queues, stacks, buffers, pagination |
 | **Lightning / Cracks** | Zigzag paths | Energy, events, interrupts, exceptions |
 
-Each texture function receives `(ctx, cx, cy, capRx, capRy, spotColor)`, sets
-`ctx.globalAlpha = 0.7`, draws the pattern, then restores `ctx.globalAlpha = 1.0`.
+Each texture function receives `(ctx, cx, cy, capRx, capRy, spotColor, baseAlpha)`.
+The 7th param `baseAlpha` (0-1, default 1) is a multiplier for all alpha values inside the
+texture. This enables ghost/derived actors to render textures at reduced opacity. Textures
+set `ctx.globalAlpha = ownAlpha * baseAlpha`, draw the pattern, then restore `ctx.globalAlpha = 1.0`.
 
 ### Cap Color Palette
 
