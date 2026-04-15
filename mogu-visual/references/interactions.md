@@ -882,6 +882,67 @@ function draw(ctx, width, height) {
 
 ---
 
+## 7. Label Layout Rules
+
+Text overlap is the most common visual bug in generated scenes. Follow these rules:
+
+### Labels below Mogus
+
+Always position role labels (e.g., "Producer", "Broker") **below** the Mogu, offset by at least `moguSize * 0.35` from the Mogu's center y. Never use a hardcoded y-offset that ignores Mogu size.
+
+```javascript
+// Good: label position adapts to Mogu size
+ctx.fillText('Broker', brokerX, brokerY + brokerSize * 0.35 + 12);
+
+// Bad: hardcoded offset collides at large sizes
+ctx.fillText('Broker', brokerX, brokerY + 80);
+```
+
+### No stacking without clearance
+
+If there's a queue bar, counter, or status indicator between a Mogu and its label, the label goes below **all** intermediate elements:
+
+```javascript
+var labelY = queueBarY + queueBarH + 16; // below the queue bar, not below the Mogu
+ctx.fillText('Broker', brokerX, labelY);
+```
+
+### Shorten labels when actors multiply
+
+| Count | Label style |
+|-------|-------------|
+| 1-3 actors | Full name: "Consumer 1", "Consumer 2" |
+| 4-5 actors | Short: "C1", "C2", "C3" |
+| 6+ actors  | No labels — use cap color legend instead |
+
+### Counts inside containers
+
+Render queue/buffer counts **inside** their bar (using `textBaseline = 'middle'`), not as separate text below:
+
+```javascript
+ctx.textBaseline = 'middle';
+ctx.fillText(count + '/' + max, barCenterX, barCenterY);
+ctx.textBaseline = 'alphabetic'; // restore
+```
+
+### Overflow capping
+
+Items that stack (queue pills, pending tasks) must have a **max visible count**. If there are 50 items in a queue, show 16 pills max and let the fill bar communicate the rest:
+
+```javascript
+var maxVisible = pillCols * 2; // e.g., 2 rows of 8
+var visibleCount = Math.min(queue.length, maxVisible);
+```
+
+### Test at extremes
+
+Before delivering, mentally simulate:
+- Max actor count (e.g., 5 consumers) — do labels overlap?
+- Max queue depth — do pills overflow into the Mogu?
+- Minimum window size — does the control panel obscure the scene?
+
+---
+
 ## Summary
 
 This reference covers:
@@ -891,5 +952,6 @@ This reference covers:
 4. **6 animation principles** — idle bounce, squash & stretch, cap pulse, eye tracking, bezier paths, error flash
 5. **Absorption ceremony** — complete 4-phase timeline with code
 6. **Color lerp helper** — smooth color transitions
+7. **Label layout rules** — preventing text overlap in generated scenes
 
 All code is copy-paste ready and compatible with `widgets.js` from the Mogu Visual components.

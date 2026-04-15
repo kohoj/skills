@@ -105,6 +105,15 @@ Check every item before delivering. If any row fails, fix it before handing off.
 | Self-contained | Errors on open | Check CDN links, inline all critical code |
 | Not dead | No motion without interaction | Add idle bounce + ambient particle/item motion |
 | Not skin-deep | Params only change cosmetics | Params must affect behavior (rate, count, routing) |
+| Labels readable | Text overlapping Mogus, other labels, or UI elements | See label layout rules below |
+
+**Label layout rules (common source of visual bugs):**
+
+1. **Labels go below their Mogu**, offset by at least `moguSize * 0.35` from center. Never place labels at a fixed y that ignores Mogu size.
+2. **Never stack two text elements without clearance.** If a queue bar / counter / status text exists between a Mogu and its label, the label goes below ALL of them.
+3. **Shorten labels when actors multiply.** 5 consumers labeled "Consumer 1" through "Consumer 5" will overlap. Use "C1"–"C5" or omit labels when the cap color already distinguishes roles.
+4. **Queue/status indicators inside or to the side**, not stacked below in the same column as the label. Prefer rendering counts inside bars (textBaseline = 'middle') rather than as separate text below.
+5. **Test at extremes.** Check layout with max actor count (e.g., 5 consumers) and max queue depth. If pills/items overflow their container, cap the visible count.
 
 ## Mogu Character Quick Reference
 
